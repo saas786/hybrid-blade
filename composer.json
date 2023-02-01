@@ -1,0 +1,55 @@
+{
+	"name": "themehybrid/hybrid-blade",
+	"description": "Blade template system for Hybrid Core.",
+	"license": "GPL-2.0-or-later",
+	"keywords": [
+		"php"
+	],
+	"authors": [
+		{
+			"name": "Theme Hybrid",
+			"email": "themehybrid@gmail.com",
+			"homepage": "https://themehybrid.com",
+			"role": "Developer"
+		}
+	],
+	"homepage": "https://github.com/themehybrid/hybrid-blade",
+	"support": {
+		"issues": "https://github.com/themehybrid/hybrid-blade/issues",
+		"forum": "https://themehybrid.com/board/forums/hybrid-core"
+	},
+	"require": {
+		"php": "^8.1",
+		"themehybrid/hybrid-contracts": "dev-dev as 1.0",
+		"themehybrid/hybrid-core": "dev-dev as 6.0",
+		"themehybrid/hybrid-filesystem": "dev-dev as 2.0",
+		"themehybrid/hybrid-tools": "dev-dev as 1.0"
+	},
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/themehybrid/hybrid-core"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/saas786/hybrid-contracts"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/saas786/hybrid-tools"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/saas786/hybrid-filesystem"
+		},
+		{
+			"type": "vcs",
+			"url": "https://github.com/saas786/hybrid-events"
+		}
+	],
+	"autoload": {
+		"psr-4": {
+			"Hybrid\\Blade\\": "src/"
+		}
+	}
+}
