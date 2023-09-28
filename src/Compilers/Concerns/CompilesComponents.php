@@ -57,7 +57,7 @@ trait CompilesComponents {
     public static function compileClassComponentOpening( string $component, string $alias, string $data, string $hash ) {
         return implode("\n", [
             '<?php if (isset($component)) { $__componentOriginal' . $hash . ' = $component; } ?>',
-            '<?php $component = ' . $component . '::resolve(' . ( $data ?: '[]' ) . ' + (isset($attributes) && $attributes instanceof Hybrid\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>',
+            '<?php $component = ' . $component . '::resolve(' . ( $data ?: '[]' ) . ' + (isset($attributes) && $attributes instanceof Hybrid\Blade\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>',
             '<?php $component->withName(' . $alias . '); ?>',
             '<?php if ($component->shouldRender()): ?>',
             '<?php $__env->startComponent($component->resolveView(), $component->data()); ?>',

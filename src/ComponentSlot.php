@@ -7,7 +7,7 @@ class ComponentSlot implements Htmlable {
     /**
      * The slot attribute bag.
      *
-     * @var \Hybrid\View\ComponentAttributeBag
+     * @var \Hybrid\Blade\ComponentAttributeBag
      */
     public $attributes;
 

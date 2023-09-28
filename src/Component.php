@@ -30,7 +30,7 @@ abstract class Component {
     /**
      * The component attributes.
      *
-     * @var \Hybrid\View\ComponentAttributeBag
+     * @var \Hybrid\Blade\ComponentAttributeBag
      */
     public $attributes;
 
@@ -338,7 +338,7 @@ abstract class Component {
      * Get a new attribute bag instance.
      *
      * @param  array $attributes
-     * @return \Hybrid\View\ComponentAttributeBag
+     * @return \Hybrid\Blade\ComponentAttributeBag
      */
     protected function newAttributeBag( array $attributes = [] ) {
         return new ComponentAttributeBag( $attributes );
