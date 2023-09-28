@@ -2,14 +2,13 @@
 
 namespace Hybrid\Blade\Compilers\Concerns;
 
-use Illuminate\Support\Js;
+use Hybrid\Tools\Js;
 
 trait CompilesJs {
 
     /**
      * Compile the "@js" directive into valid PHP.
      *
-     * @param  string $expression
      * @return string
      */
     protected function compileJs( string $expression ) {

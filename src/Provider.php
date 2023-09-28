@@ -6,19 +6,22 @@ use Hybrid\Blade\Compilers\BladeCompiler;
 use Hybrid\Blade\Engines\CompilerEngine;
 use Hybrid\Core\ServiceProvider;
 use Hybrid\View\Facades\View;
-
 use function Hybrid\Tools\tap;
 
 class Provider extends ServiceProvider {
 
     /**
-     * Register the service provider.
+     * Register.
      *
      * @return void
      */
     public function register() {
         $this->registerBladeFactory();
         $this->registerBladeCompiler();
+
+        $this->app->terminating(static function () {
+            Component::flushCache();
+        });
     }
 
     /**
@@ -44,6 +47,10 @@ class Provider extends ServiceProvider {
 
             $factory->share( 'app', $app );
 
+            $app->terminating(static function () {
+                Component::forgetFactory();
+            });
+
             return $factory;
         });
     }
@@ -54,15 +61,21 @@ class Provider extends ServiceProvider {
      * @return void
      */
     public function registerBladeCompiler() {
-        $this->app->singleton('blade.compiler', static fn( $app ) => tap(new BladeCompiler(
-            $app['files'],
-            $app['config']['view.compiled'],
-            $app['config']->get( 'view.relative_hash', false ) ? $app->basePath() : '',
-            $app['config']->get( 'view.cache', false ),
-            $app['config']->get( 'view.compiled_extension', 'php' )
-            ), static function ( $blade ) {
+        $this->app->singleton(
+            'blade.compiler',
+            static fn( $app ) => tap(
+                new BladeCompiler(
+                    $app['files'],
+                    $app['config']['view.compiled'],
+                    $app['config']->get( 'view.relative_hash', false ) ? $app->basePath() : '',
+                    $app['config']->get( 'view.cache', false ),
+                    $app['config']->get( 'view.compiled_extension', 'php' )
+                ),
+                static function ( $blade ) {
                     $blade->component( 'dynamic-component', DynamicComponent::class );
-        }));
+                }
+            )
+        );
     }
 
     /**
@@ -84,7 +97,15 @@ class Provider extends ServiceProvider {
      */
     public function boot() {
         // Register the Blade engine implementation.
-        View::addExtension( 'blade.php', 'blade', fn() => new CompilerEngine( $this->app['blade.compiler'], $this->app['files'] ) );
+        View::addExtension( 'blade.php', 'blade', function () {
+            $compiler = new CompilerEngine( $this->app['blade.compiler'], $this->app['files'] );
+
+            $this->app->terminating(static function () use ( $compiler ) {
+                $compiler->forgetCompiledOrNotExpired();
+            });
+
+            return $compiler;
+        } );
     }
 
 }

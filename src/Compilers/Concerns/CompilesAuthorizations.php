@@ -11,7 +11,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileCan( $expression ) {
-        return "<?php if (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
+        return "<?php if (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
     }
 
     /**
@@ -21,7 +21,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileCannot( $expression ) {
-        return "<?php if (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
+        return "<?php if (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
     }
 
     /**
@@ -31,7 +31,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileCanany( $expression ) {
-        return "<?php if (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->any{$expression}): ?>";
+        return "<?php if (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->any{$expression}): ?>";
     }
 
     /**
@@ -41,7 +41,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileElsecan( $expression ) {
-        return "<?php elseif (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
+        return "<?php elseif (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
     }
 
     /**
@@ -51,7 +51,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileElsecannot( $expression ) {
-        return "<?php elseif (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
+        return "<?php elseif (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
     }
 
     /**
@@ -61,7 +61,7 @@ trait CompilesAuthorizations {
      * @return string
      */
     protected function compileElsecanany( $expression ) {
-        return "<?php elseif (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->any{$expression}): ?>";
+        return "<?php elseif (app(\Hybrid\\Contracts\\Auth\\Access\\Gate::class)->any{$expression}): ?>";
     }
 
     /**

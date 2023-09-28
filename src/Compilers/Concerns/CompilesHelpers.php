@@ -2,7 +2,7 @@
 
 namespace Hybrid\Blade\Compilers\Concerns;
 
-use Illuminate\Foundation\Vite;
+use Hybrid\Tools\Vite;
 
 trait CompilesHelpers {
 
@@ -48,7 +48,7 @@ trait CompilesHelpers {
     /**
      * Compile the "vite" statements into valid PHP.
      *
-     * @param  ?string $arguments
+     * @param  string|null $arguments
      * @return string
      */
     protected function compileVite( $arguments ) {

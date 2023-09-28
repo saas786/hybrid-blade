@@ -5,6 +5,7 @@ namespace Hybrid\Blade\Compilers\Concerns;
 use Hybrid\Blade\ComponentAttributeBag;
 use Hybrid\Contracts\CanBeEscapedWhenCastToString;
 use Hybrid\Tools\Str;
+use function Hybrid\Tools\e;
 
 trait CompilesComponents {
 
@@ -40,11 +41,10 @@ trait CompilesComponents {
     /**
      * Get a new component hash for a component name.
      *
-     * @param  string $component
      * @return string
      */
     public static function newComponentHash( string $component ) {
-        static::$componentHashStack[] = $hash = sha1( $component );
+        static::$componentHashStack[] = $hash = hash( 'xxh128', $component );
 
         return $hash;
     }
@@ -52,16 +52,12 @@ trait CompilesComponents {
     /**
      * Compile a class component opening.
      *
-     * @param  string $component
-     * @param  string $alias
-     * @param  string $data
-     * @param  string $hash
      * @return string
      */
     public static function compileClassComponentOpening( string $component, string $alias, string $data, string $hash ) {
         return implode("\n", [
             '<?php if (isset($component)) { $__componentOriginal' . $hash . ' = $component; } ?>',
-            '<?php $component = $__env->getContainer()->make(' . Str::finish( $component, '::class' ) . ', ' . ( $data ?: '[]' ) . ' + (isset($attributes) ? (array) $attributes->getIterator() : [])); ?>',
+            '<?php $component = ' . $component . '::resolve(' . ( $data ?: '[]' ) . ' + (isset($attributes) && $attributes instanceof Hybrid\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>',
             '<?php $component->withName(' . $alias . '); ?>',
             '<?php if ($component->shouldRender()): ?>',
             '<?php $__env->startComponent($component->resolveView(), $component->data()); ?>',
@@ -139,7 +135,8 @@ trait CompilesComponents {
      * @return string
      */
     protected function compileProps( $expression ) {
-        return "<?php foreach(\$attributes->onlyProps{$expression} as \$__key => \$__value) {
+        return "<?php \$attributes ??= new \\Hybrid\\View\\ComponentAttributeBag; ?>
+<?php foreach(\$attributes->onlyProps{$expression} as \$__key => \$__value) {
     \$\$__key = \$\$__key ?? \$__value;
 } ?>
 <?php \$attributes = \$attributes->exceptProps{$expression}; ?>
@@ -178,7 +175,7 @@ trait CompilesComponents {
         }
 
         return is_string( $value ) ||
-               ( is_object( $value ) && ! $value instanceof ComponentAttributeBag && method_exists( $value, '__toString' ) )
+                ( is_object( $value ) && ! $value instanceof ComponentAttributeBag && method_exists( $value, '__toString' ) )
                         ? e( $value )
                         : $value;
     }

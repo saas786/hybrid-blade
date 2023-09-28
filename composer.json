@@ -20,6 +20,7 @@
 	},
 	"require": {
 		"php": "^8.1",
+		"ext-tokenizer": "*",
 		"themehybrid/hybrid-contracts": "dev-dev as 1.0",
 		"themehybrid/hybrid-core": "dev-dev as 6.0",
 		"themehybrid/hybrid-filesystem": "dev-dev as 2.0",

@@ -32,7 +32,6 @@ class DynamicComponent extends Component {
     /**
      * Create a new component instance.
      *
-     * @param  string $component
      * @return void
      */
     public function __construct( string $component ) {
@@ -132,7 +131,6 @@ EOF;
     /**
      * Get the names of the variables that should be bound to the component.
      *
-     * @param  string $class
      * @return array
      */
     protected function bindings( string $class ) {

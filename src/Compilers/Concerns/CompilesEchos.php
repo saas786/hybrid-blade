@@ -110,7 +110,7 @@ trait CompilesEchos {
 
             return $matches[1]
                 ? $matches[0]
-                : "<?php echo e({$this->wrapInEchoHandler($matches[2])}); ?>{$whitespace}";
+                : "<?php echo \Hybrid\Tools\e({$this->wrapInEchoHandler($matches[2])}); ?>{$whitespace}";
         };
 
         return preg_replace_callback( $pattern, $callback, $value );

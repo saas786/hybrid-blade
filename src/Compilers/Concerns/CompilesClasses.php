@@ -13,7 +13,7 @@ trait CompilesClasses {
     protected function compileClass( $expression ) {
         $expression = is_null( $expression ) ? '([])' : $expression;
 
-        return "class=\"<?php echo \Hybrid\Tools\Arr::toCssClasses{$expression} ?>\"";
+        return "class=\"<?php echo \Hybrid\Tools\Arr::toCssClasses{$expression}; ?>\"";
     }
 
 }

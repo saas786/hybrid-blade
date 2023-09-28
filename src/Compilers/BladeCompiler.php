@@ -11,7 +11,6 @@ use Hybrid\Tools\Str;
 use Hybrid\Tools\Traits\ReflectsClosures;
 use Hybrid\View\Compilers\Compiler;
 use Hybrid\View\Compilers\CompilerInterface;
-
 use function Hybrid\Tools\collect;
 
 class BladeCompiler extends Compiler implements CompilerInterface {
@@ -23,6 +22,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     use Concerns\CompilesConditionals;
     use Concerns\CompilesEchos;
     use Concerns\CompilesErrors;
+    use Concerns\CompilesFragments;
     use Concerns\CompilesHelpers;
     use Concerns\CompilesIncludes;
     use Concerns\CompilesInjections;
@@ -32,6 +32,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     use Concerns\CompilesLoops;
     use Concerns\CompilesRawPhp;
     use Concerns\CompilesStacks;
+    use Concerns\CompilesStyles;
     use Concerns\CompilesTranslations;
     use ReflectsClosures;
 
@@ -57,6 +58,13 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     protected $conditions = [];
 
     /**
+     * The registered string preparation callbacks.
+     *
+     * @var array
+     */
+    protected $prepareStringsForCompilationUsing = [];
+
+    /**
      * All of the registered precompilers.
      *
      * @var array
@@ -73,7 +81,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * All of the available compiler functions.
      *
-     * @var string[]
+     * @var array<string>
      */
     protected $compilers = [
         // 'Comments',
@@ -85,21 +93,21 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * Array of opening and closing tags for raw echos.
      *
-     * @var string[]
+     * @var array<string>
      */
     protected $rawTags = [ '{!!', '!!}' ];
 
     /**
      * Array of opening and closing tags for regular echos.
      *
-     * @var string[]
+     * @var array<string>
      */
     protected $contentTags = [ '{{', '}}' ];
 
     /**
      * Array of opening and closing tags for escaped echos.
      *
-     * @var string[]
+     * @var array<string>
      */
     protected $escapedTags = [ '{{{', '}}}' ];
 
@@ -108,7 +116,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      *
      * @var string
      */
-    protected $echoFormat = 'e(%s)';
+    protected $echoFormat = '\Hybrid\Tools\e(%s)';
 
     /**
      * Array of footer lines to be added to the template.
@@ -123,6 +131,13 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @var array
      */
     protected $rawBlocks = [];
+
+    /**
+     * The array of anonymous component paths to search for components in.
+     *
+     * @var array
+     */
+    protected $anonymousComponentPaths = [];
 
     /**
      * The array of anonymous component namespaces to autoload from.
@@ -234,11 +249,17 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     public function compileString( $value ) {
         [$this->footer, $result] = [ [], '' ];
 
+        $value = $this->storeUncompiledBlocks( $value );
+
+        foreach ( $this->prepareStringsForCompilationUsing as $callback ) {
+            $value = $callback( $value );
+        }
+
         // First we will compile the Blade component tags. This is a precompile style
         // step which compiles the component Blade tags into @component directives
         // that may be used by Blade. Then we should call any other precompilers.
         $value = $this->compileComponentTags(
-            $this->compileComments( $this->storeUncompiledBlocks( $value ) )
+            $this->compileComments( $value )
         );
 
         foreach ( $this->precompilers as $precompiler ) {
@@ -285,10 +306,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
         $component = new class($string) extends Component
         {
 
-            protected $template;
-
-            public function __construct( $template ) {
-                $this->template = $template;
+            public function __construct( protected $template ) {
             }
 
             public function render() {
@@ -321,14 +339,16 @@ class BladeCompiler extends Compiler implements CompilerInterface {
 
         if ( $view instanceof View ) {
             return $view->with( $data )->render();
-        } elseif ( $view instanceof Htmlable ) {
-            return $view->toHtml();
-        } else {
-            return Container::getInstance()
-                ->make( ViewFactory::class )
-                ->make( $view, $data )
-                ->render();
         }
+
+        if ( $view instanceof Htmlable ) {
+            return $view->toHtml();
+        }
+
+        return Container::getInstance()
+            ->make( ViewFactory::class )
+            ->make( $view, $data )
+            ->render();
     }
 
     /**
@@ -366,7 +386,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return string
      */
     protected function storePhpBlocks( $value ) {
-        return preg_replace_callback( '/(?<!@)@php(.*?)@endphp/s', fn( $matches ) => $this->storeRawBlock( "<?php{$matches[1]}?>" ), $value );
+        return preg_replace_callback( '/(?<!@)@php((?:.(?!(?<!@)@php))*?)@endphp/s', fn( $matches ) => $this->storeRawBlock( "<?php{$matches[1]}?>" ), $value );
     }
 
     /**
@@ -467,13 +487,108 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * Compile Blade statements that start with "@".
      *
-     * @param  string $value
+     * @param  string $template
      * @return string
      */
-    protected function compileStatements( $value ) {
-        return preg_replace_callback(
-            '/\B@(@?\w+(?:::\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x', fn( $match ) => $this->compileStatement( $match ), $value
-        );
+    protected function compileStatements( $template ) {
+        preg_match_all( '/\B@(@?\w+(?:::\w+)?)([ \t]*)(\( ( [\S\s]*? ) \))?/x', $template, $matches );
+
+        $offset = 0;
+
+        for ( $i = 0; isset( $matches[0][ $i ] ); $i++ ) {
+            $match = [
+                $matches[0][ $i ],
+                $matches[1][ $i ],
+                $matches[2][ $i ],
+                $matches[3][ $i ] ?: null,
+                $matches[4][ $i ] ?: null,
+            ];
+
+            // Here we check to see if we have properly found the closing parenthesis by
+            // regex pattern or not, and will recursively continue on to the next ")"
+            // then check again until the tokenizer confirms we find the right one.
+            while ( isset( $match[4] ) &&
+                Str::endsWith( $match[0], ')' ) &&
+                ! $this->hasEvenNumberOfParentheses( $match[0] ) ) {
+                if ( ( $after = Str::after( $template, $match[0] ) ) === $template ) {
+                    break;
+                }
+
+                $rest = Str::before( $after, ')' );
+
+                if ( isset( $matches[0][ $i + 1 ] ) && Str::contains( $rest . ')', $matches[0][ $i + 1 ] ) ) {
+                    unset( $matches[0][ $i + 1 ] );
+                    ++$i;
+                }
+
+                $match[0] = $match[0] . $rest . ')';
+                $match[3] = $match[3] . $rest . ')';
+                $match[4] = $match[4] . $rest;
+            }
+
+            [$template, $offset] = $this->replaceFirstStatement(
+                $match[0],
+                $this->compileStatement( $match ),
+                $template,
+                $offset
+            );
+        }
+
+        return $template;
+    }
+
+    /**
+     * Replace the first match for a statement compilation operation.
+     *
+     * @param  string $search
+     * @param  string $replace
+     * @param  string $subject
+     * @param  int    $offset
+     * @return array
+     */
+    protected function replaceFirstStatement( $search, $replace, $subject, $offset ) {
+        $search = (string) $search;
+
+        if ( $search === '' ) {
+            return $subject;
+        }
+
+        $position = strpos( $subject, $search, $offset );
+
+        if ( $position !== false ) {
+            return [
+                substr_replace( $subject, $replace, $position, strlen( $search ) ),
+                $position + strlen( $replace ),
+            ];
+        }
+
+        return [ $subject, 0 ];
+    }
+
+    /**
+     * Determine if the given expression has the same number of opening and closing parentheses.
+     *
+     * @return bool
+     */
+    protected function hasEvenNumberOfParentheses( string $expression ) {
+        $tokens = token_get_all( '<?php ' . $expression );
+
+        if ( Arr::last( $tokens ) !== ')' ) {
+            return false;
+        }
+
+        $opening = 0;
+        $closing = 0;
+
+        foreach ( $tokens as $token ) {
+            if ( $token == ')' ) {
+                ++$closing;
+            } elseif ( $token == '(' ) {
+                ++$opening;
+            }
+        }
+
+        return $opening === $closing;
     }
 
     /**
@@ -530,7 +645,6 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * Register a custom Blade compiler.
      *
-     * @param  callable $compiler
      * @return void
      */
     public function extend( callable $compiler ) {
@@ -549,24 +663,23 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * Register an "if" statement directive.
      *
-     * @param  string   $name
-     * @param  callable $callback
+     * @param  string $name
      * @return void
      */
     public function if( $name, callable $callback ) {
         $this->conditions[ $name ] = $callback;
 
         $this->directive($name, static fn( $expression ) => $expression !== ''
-                    ? "<?php if (\Illuminate\Support\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php if (\Illuminate\Support\Facades\Blade::check('{$name}')): ?>");
+                    ? "<?php if (\Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
+        : "<?php if (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
 
         $this->directive('unless' . $name, static fn( $expression ) => $expression !== ''
-                ? "<?php if (! \Illuminate\Support\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php if (! \Illuminate\Support\Facades\Blade::check('{$name}')): ?>");
+                ? "<?php if (! \Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
+        : "<?php if (! \Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
 
         $this->directive('else' . $name, static fn( $expression ) => $expression !== ''
-                ? "<?php elseif (\Illuminate\Support\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php elseif (\Illuminate\Support\Facades\Blade::check('{$name}')): ?>");
+                ? "<?php elseif (\Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
+        : "<?php elseif (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
 
         $this->directive( 'end' . $name, static fn() => '<?php endif; ?>' );
     }
@@ -575,7 +688,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * Check the result of a condition.
      *
      * @param  string $name
-     * @param  array  $parameters
+     * @param  array  ...$parameters
      * @return bool
      */
     public function check( $name, ...$parameters ) {
@@ -635,13 +748,30 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     }
 
     /**
-     * Register an anonymous component namespace.
+     * Register a new anonymous component path.
      *
-     * @param  string      $directory
-     * @param  string|null $prefix
      * @return void
      */
-    public function anonymousComponentNamespace( string $directory, string $prefix = null ) {
+    public function anonymousComponentPath( string $path, ?string $prefix = null ) {
+        $prefixHash = md5( $prefix ?: $path );
+
+        $this->anonymousComponentPaths[] = [
+            'path'       => $path,
+            'prefix'     => $prefix,
+            'prefixHash' => $prefixHash,
+        ];
+
+        Container::getInstance()
+            ->make( ViewFactory::class )
+            ->addNamespace( $prefixHash, $path );
+    }
+
+    /**
+     * Register an anonymous component namespace.
+     *
+     * @return void
+     */
+    public function anonymousComponentNamespace( string $directory, ?string $prefix = null ) {
         $prefix ??= $directory;
 
         $this->anonymousComponentNamespaces[ $prefix ] = Str::of( $directory )
@@ -659,6 +789,15 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      */
     public function componentNamespace( $namespace, $prefix ) {
         $this->classComponentNamespaces[ $prefix ] = $namespace;
+    }
+
+    /**
+     * Get the registered anonymous component paths.
+     *
+     * @return array
+     */
+    public function getAnonymousComponentPaths() {
+        return $this->anonymousComponentPaths;
     }
 
     /**
@@ -727,8 +866,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     /**
      * Register a handler for custom directives.
      *
-     * @param  string   $name
-     * @param  callable $handler
+     * @param  string $name
      * @return void
      * @throws \InvalidArgumentException
      */
@@ -750,9 +888,19 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     }
 
     /**
+     * Indicate that the following callable should be used to prepare strings for compilation.
+     *
+     * @return $this
+     */
+    public function prepareStringsForCompilationUsing( callable $callback ) {
+        $this->prepareStringsForCompilationUsing[] = $callback;
+
+        return $this;
+    }
+
+    /**
      * Register a new precompiler.
      *
-     * @param  callable $precompiler
      * @return void
      */
     public function precompiler( callable $precompiler ) {
@@ -775,7 +923,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return void
      */
     public function withDoubleEncoding() {
-        $this->setEchoFormat( 'e(%s, true)' );
+        $this->setEchoFormat( '\Hybrid\Tools\e(%s, true)' );
     }
 
     /**
@@ -784,7 +932,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return void
      */
     public function withoutDoubleEncoding() {
-        $this->setEchoFormat( 'e(%s, false)' );
+        $this->setEchoFormat( '\Hybrid\Tools\e(%s, false)' );
     }
 
     /**

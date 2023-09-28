@@ -5,7 +5,6 @@ namespace Hybrid\Blade\Concerns;
 use Hybrid\Blade\ComponentSlot;
 use Hybrid\Contracts\View\View;
 use Hybrid\Tools\Arr;
-use Hybrid\Tools\HtmlString;
 
 trait ManagesComponents {
 
@@ -92,11 +91,13 @@ trait ManagesComponents {
 
             if ( $view instanceof View ) {
                 return $view->with( $data )->render();
-            } elseif ( $view instanceof Htmlable ) {
-                return $view->toHtml();
-            } else {
-                return $this->make( $view, $data )->render();
             }
+
+            if ( $view instanceof Htmlable ) {
+                return $view->toHtml();
+            }
+
+            return $this->make( $view, $data )->render();
         } finally {
             $this->currentComponentData = $previousComponentData;
         }
@@ -108,7 +109,7 @@ trait ManagesComponents {
      * @return array
      */
     protected function componentData() {
-        $defaultSlot = new HtmlString( trim( ob_get_clean() ) );
+        $defaultSlot = new ComponentSlot( trim( ob_get_clean() ) );
 
         $slots = array_merge([
             '__default' => $defaultSlot,

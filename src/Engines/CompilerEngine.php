@@ -5,7 +5,6 @@ namespace Hybrid\Blade\Engines;
 use Hybrid\Filesystem\Filesystem;
 use Hybrid\View\Compilers\CompilerInterface;
 use Hybrid\View\Engines\PhpEngine;
-
 use function Hybrid\Tools\last;
 
 class CompilerEngine extends PhpEngine {
@@ -25,13 +24,18 @@ class CompilerEngine extends PhpEngine {
     protected $lastCompiled = [];
 
     /**
+     * The view paths that were compiled or are not expired, keyed by the path.
+     *
+     * @var array<string, true>
+     */
+    protected $compiledOrNotExpired = [];
+
+    /**
      * Create a new compiler engine instance.
      *
-     * @param  \Hybrid\View\Compilers\CompilerInterface $compiler
-     * @param  \Hybrid\Filesystem\Filesystem|null       $files
      * @return void
      */
-    public function __construct( CompilerInterface $compiler, Filesystem $files = null ) {
+    public function __construct( CompilerInterface $compiler, ?Filesystem $files = null ) {
         parent::__construct( $files ?: new Filesystem() );
 
         $this->compiler = $compiler;
@@ -50,14 +54,30 @@ class CompilerEngine extends PhpEngine {
         // If this given view has expired, which means it has simply been edited since
         // it was last compiled, we will re-compile the views so we can evaluate a
         // fresh copy of the view. We'll pass the compiler the path of the view.
-        if ( $this->compiler->isExpired( $path ) ) {
+        if ( ! isset( $this->compiledOrNotExpired[ $path ] ) && $this->compiler->isExpired( $path ) ) {
             $this->compiler->compile( $path );
         }
 
         // Once we have the path to the compiled file, we will evaluate the paths with
         // typical PHP just like any other templates. We also keep a stack of views
         // which have been rendered for right exception messages to be generated.
-        $results = $this->evaluatePath( $this->compiler->getCompiledPath( $path ), $data );
+        try {
+            $results = $this->evaluatePath( $this->compiler->getCompiledPath( $path ), $data );
+        } catch ( \Hybrid\View\ViewException $e ) {
+            if ( ! str( $e->getMessage() )->contains( [ 'No such file or directory', 'File does not exist at path' ] ) ) {
+                throw $e;
+            }
+
+            if ( ! isset( $this->compiledOrNotExpired[ $path ] ) ) {
+                throw $e;
+            }
+
+            $this->compiler->compile( $path );
+
+            $results = $this->evaluatePath( $this->compiler->getCompiledPath( $path ), $data );
+        }
+
+        $this->compiledOrNotExpired[ $path ] = true;
 
         array_pop( $this->lastCompiled );
 
@@ -67,12 +87,15 @@ class CompilerEngine extends PhpEngine {
     /**
      * Handle a view exception.
      *
-     * @param  \Throwable $e
-     * @param  int        $obLevel
+     * @param  int $obLevel
      * @return void
      * @throws \Throwable
      */
     protected function handleViewException( \Throwable $e, $obLevel ) {
+        // if ($e instanceof HttpException || $e instanceof HttpResponseException) {
+            // parent::handleViewException($e, $obLevel);
+        // }
+
         $e = new \Hybrid\View\ViewException( $this->getMessage( $e ), 0, 1, $e->getFile(), $e->getLine(), $e );
 
         parent::handleViewException( $e, $obLevel );
@@ -81,7 +104,6 @@ class CompilerEngine extends PhpEngine {
     /**
      * Get the exception message for an exception.
      *
-     * @param  \Throwable $e
      * @return string
      */
     protected function getMessage( \Throwable $e ) {
@@ -95,6 +117,15 @@ class CompilerEngine extends PhpEngine {
      */
     public function getCompiler() {
         return $this->compiler;
+    }
+
+    /**
+     * Clear the cache of views that were compiled or not expired.
+     *
+     * @return void
+     */
+    public function forgetCompiledOrNotExpired() {
+        $this->compiledOrNotExpired = [];
     }
 
 }
