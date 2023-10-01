@@ -19,35 +19,14 @@
 		"forum": "https://themehybrid.com/board/forums/hybrid-core"
 	},
 	"require": {
-		"php": "^8.1",
+		"php": ">=8.0",
 		"ext-tokenizer": "*",
-		"themehybrid/hybrid-contracts": "dev-dev as 1.0",
-		"themehybrid/hybrid-core": "dev-dev as 6.0",
-		"themehybrid/hybrid-filesystem": "dev-dev as 2.0",
-		"themehybrid/hybrid-tools": "dev-dev as 1.0"
+		"themehybrid/hybrid-contracts": "^2.0",
+		"themehybrid/hybrid-core": "^7.0",
+		"themehybrid/hybrid-filesystem": "^1.0",
+		"themehybrid/hybrid-tools": "^2.0"
 	},
-	"repositories": [
-		{
-			"type": "vcs",
-			"url": "https://github.com/themehybrid/hybrid-core"
-		},
-		{
-			"type": "vcs",
-			"url": "https://github.com/saas786/hybrid-contracts"
-		},
-		{
-			"type": "vcs",
-			"url": "https://github.com/saas786/hybrid-tools"
-		},
-		{
-			"type": "vcs",
-			"url": "https://github.com/saas786/hybrid-filesystem"
-		},
-		{
-			"type": "vcs",
-			"url": "https://github.com/saas786/hybrid-events"
-		}
-	],
+	"repositories": [],
 	"autoload": {
 		"psr-4": {
 			"Hybrid\\Blade\\": "src/"
