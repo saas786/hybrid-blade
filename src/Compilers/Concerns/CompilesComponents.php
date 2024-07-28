@@ -2,6 +2,7 @@
 
 namespace Hybrid\Blade\Compilers\Concerns;
 
+use Hybrid\Blade\AnonymousComponent;
 use Hybrid\Blade\ComponentAttributeBag;
 use Hybrid\Contracts\CanBeEscapedWhenCastToString;
 use Hybrid\Tools\Str;
@@ -29,7 +30,9 @@ trait CompilesComponents {
 
         $component = trim( $component, '\'"' );
 
-        $hash = static::newComponentHash( $component );
+        $hash = static::newComponentHash(
+            AnonymousComponent::class === $component ? $component . ':' . trim( $alias, '\'"' ) : $component
+        );
 
         if ( Str::contains( $component, [ '::class', '\\' ] ) ) {
             return static::compileClassComponentOpening( $component, $alias, $data, $hash );
@@ -55,13 +58,14 @@ trait CompilesComponents {
      * @return string
      */
     public static function compileClassComponentOpening( string $component, string $alias, string $data, string $hash ) {
-        return implode("\n", [
+        return implode( "\n", [
             '<?php if (isset($component)) { $__componentOriginal' . $hash . ' = $component; } ?>',
-            '<?php $component = ' . $component . '::resolve(' . ( $data ?: '[]' ) . ' + (isset($attributes) && $attributes instanceof Hybrid\Blade\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>',
+            '<?php if (isset($attributes)) { $__attributesOriginal' . $hash . ' = $attributes; } ?>',
+            '<?php $component = ' . $component . '::resolve(' . ( $data ?: '[]' ) . ' + (isset($attributes) && $attributes instanceof Hybrid\Blade\ComponentAttributeBag ? $attributes->all() : [])); ?>',
             '<?php $component->withName(' . $alias . '); ?>',
             '<?php if ($component->shouldRender()): ?>',
             '<?php $__env->startComponent($component->resolveView(), $component->data()); ?>',
-        ]);
+        ] );
     }
 
     /**
@@ -81,13 +85,17 @@ trait CompilesComponents {
     public function compileEndComponentClass() {
         $hash = array_pop( static::$componentHashStack );
 
-        return $this->compileEndComponent() . "\n" . implode("\n", [
+        return $this->compileEndComponent() . "\n" . implode( "\n", [
+            '<?php endif; ?>',
+            '<?php if (isset($__attributesOriginal' . $hash . ')): ?>',
+            '<?php $attributes = $__attributesOriginal' . $hash . '; ?>',
+            '<?php unset($__attributesOriginal' . $hash . '); ?>',
             '<?php endif; ?>',
             '<?php if (isset($__componentOriginal' . $hash . ')): ?>',
             '<?php $component = $__componentOriginal' . $hash . '; ?>',
             '<?php unset($__componentOriginal' . $hash . '); ?>',
             '<?php endif; ?>',
-        ]);
+        ] );
     }
 
     /**
@@ -135,19 +143,35 @@ trait CompilesComponents {
      * @return string
      */
     protected function compileProps( $expression ) {
-        return "<?php \$attributes ??= new \\Hybrid\\View\\ComponentAttributeBag; ?>
-<?php foreach(\$attributes->onlyProps{$expression} as \$__key => \$__value) {
+        return "<?php \$attributes ??= new \\Hybrid\\Blade\\ComponentAttributeBag;
+
+\$__newAttributes = [];
+\$__propNames = \Hybrid\Blade\ComponentAttributeBag::extractPropNames({$expression});
+
+foreach (\$attributes->all() as \$__key => \$__value) {
+    if (in_array(\$__key, \$__propNames)) {
+        \$\$__key = \$\$__key ?? \$__value;
+    } else {
+        \$__newAttributes[\$__key] = \$__value;
+    }
+}
+
+\$attributes = new \Hybrid\Blade\ComponentAttributeBag(\$__newAttributes);
+
+unset(\$__propNames);
+unset(\$__newAttributes);
+
+foreach (array_filter({$expression}, 'is_string', ARRAY_FILTER_USE_KEY) as \$__key => \$__value) {
     \$\$__key = \$\$__key ?? \$__value;
-} ?>
-<?php \$attributes = \$attributes->exceptProps{$expression}; ?>
-<?php foreach (array_filter({$expression}, 'is_string', ARRAY_FILTER_USE_KEY) as \$__key => \$__value) {
-    \$\$__key = \$\$__key ?? \$__value;
-} ?>
-<?php \$__defined_vars = get_defined_vars(); ?>
-<?php foreach (\$attributes as \$__key => \$__value) {
+}
+
+\$__defined_vars = get_defined_vars();
+
+foreach (\$attributes->all() as \$__key => \$__value) {
     if (array_key_exists(\$__key, \$__defined_vars)) unset(\$\$__key);
-} ?>
-<?php unset(\$__defined_vars); ?>";
+}
+
+unset(\$__defined_vars); ?>";
     }
 
     /**

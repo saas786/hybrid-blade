@@ -44,7 +44,7 @@ trait ManagesLayouts {
      * @return void
      */
     public function startSection( $section, $content = null ) {
-        if ( $content === null ) {
+        if ( null === $content ) {
             if ( ob_start() ) {
                 $this->sectionStack[] = $section;
             }

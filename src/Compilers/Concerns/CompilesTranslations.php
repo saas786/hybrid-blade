@@ -15,7 +15,7 @@ trait CompilesTranslations {
             return '<?php $__env->startTranslation(); ?>';
         }
 
-        if ( $expression[1] === '[' ) {
+        if ( '[' === $expression[1] ) {
             return "<?php \$__env->startTranslation{$expression}; ?>";
         }
 

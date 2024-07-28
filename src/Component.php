@@ -77,6 +77,13 @@ abstract class Component {
     protected static $constructorParametersCache = [];
 
     /**
+     * The cache of ignored parameter names.
+     *
+     * @var array
+     */
+    protected static $ignoredParameterNames = [];
+
+    /**
      * Get the view / view contents that represent the component.
      *
      * @return \Hybrid\Contracts\View\View|\Hybrid\Contracts\Htmlable|\Closure|string
@@ -140,10 +147,16 @@ abstract class Component {
             return $view;
         }
 
-        $resolver = fn( $view ) => $this->extractBladeViewFromString( $view );
+        $resolver = function ( $view ) {
+            if ( $view instanceof ViewContract ) {
+                return $view;
+            }
+
+            return $this->extractBladeViewFromString( $view );
+        };
 
         return $view instanceof Closure ? static fn( array $data = [] ) => $resolver( $view( $data ) )
-            : $resolver( $view );
+        : $resolver( $view );
     }
 
     /**
@@ -159,7 +172,7 @@ abstract class Component {
             return static::$bladeViewCache[ $key ];
         }
 
-        if ( strlen( $contents ) <= PHP_MAXPATHLEN && $this->factory()->exists( $contents ) ) {
+        if ( $this->factory()->exists( $contents ) ) {
             return static::$bladeViewCache[ $key ] = $contents;
         }
 
@@ -292,7 +305,7 @@ abstract class Component {
      * @return array
      */
     protected function ignoredMethods() {
-        return array_merge([
+        return array_merge( [
             'data',
             'render',
             'resolve',
@@ -305,7 +318,7 @@ abstract class Component {
             'forgetFactory',
             'forgetComponentsResolver',
             'resolveComponentsUsing',
-        ], $this->except);
+        ], $this->except );
     }
 
     /**
@@ -379,6 +392,27 @@ abstract class Component {
     }
 
     /**
+     * Get the cached set of anonymous component constructor parameter names to exclude.
+     *
+     * @return array
+     */
+    public static function ignoredParameterNames() {
+        if ( ! isset( static::$ignoredParameterNames[ static::class ] ) ) {
+            $constructor = ( new ReflectionClass(static::class) )->getConstructor();
+
+            if ( ! $constructor ) {
+                return static::$ignoredParameterNames[ static::class ] = [];
+            }
+
+            static::$ignoredParameterNames[ static::class ] = collect( $constructor->getParameters() )
+                ->map->getName()
+                ->all();
+        }
+
+        return static::$ignoredParameterNames[ static::class ];
+    }
+
+    /**
      * Flush the component's cached state.
      *
      * @return void
@@ -412,7 +446,7 @@ abstract class Component {
     /**
      * Set the callback that should be used to resolve components within views.
      *
-     * @param  \Closure(string $component, array $data): \Hybrid\Blade\Component  $resolver
+     * @param  \Closure(string $component, array $data): \Hybrid\Blade\Component $resolver
      * @return void
      * @internal
      */

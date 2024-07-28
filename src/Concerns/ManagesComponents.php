@@ -111,9 +111,9 @@ trait ManagesComponents {
     protected function componentData() {
         $defaultSlot = new ComponentSlot( trim( ob_get_clean() ) );
 
-        $slots = array_merge([
+        $slots = array_merge( [
             '__default' => $defaultSlot,
-        ], $this->slots[ count( $this->componentStack ) ]);
+        ], $this->slots[ count( $this->componentStack ) ] );
 
         return array_merge(
             $this->componentData[ count( $this->componentStack ) ],
@@ -137,11 +137,11 @@ trait ManagesComponents {
 
         $currentComponent = count( $this->componentStack );
 
-        if ( $currentComponent === 0 ) {
+        if ( 0 === $currentComponent ) {
             return value( $default );
         }
 
-        for ( $i = $currentComponent - 1; $i >= 0; $i-- ) {
+        for ( $i = $currentComponent - 1; 0 <= $i; $i-- ) {
             $data = $this->componentData[ $i ] ?? [];
 
             if ( array_key_exists( $key, $data ) ) {
@@ -161,7 +161,7 @@ trait ManagesComponents {
      * @return void
      */
     public function slot( $name, $content = null, $attributes = [] ) {
-        if ( func_num_args() === 2 || $content !== null ) {
+        if ( func_num_args() === 2 || null !== $content ) {
             $this->slots[ $this->currentComponent() ][ $name ] = $content;
         } elseif ( ob_start() ) {
             $this->slots[ $this->currentComponent() ][ $name ] = '';

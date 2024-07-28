@@ -2,7 +2,9 @@
 
 namespace Hybrid\Blade;
 
-class AppendableAttributeValue {
+use Hybrid\Tools\Stringable;
+
+class AppendableAttributeValue implements Stringable {
 
     /**
      * The attribute value.

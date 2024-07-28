@@ -4,6 +4,7 @@ namespace Hybrid\Blade;
 
 use Hybrid\Blade\Compilers\BladeCompiler;
 use Hybrid\Blade\Engines\CompilerEngine;
+use Hybrid\Container\Container;
 use Hybrid\Core\ServiceProvider;
 use Hybrid\View\Facades\View;
 use function Hybrid\Tools\tap;
@@ -19,9 +20,9 @@ class Provider extends ServiceProvider {
         $this->registerBladeFactory();
         $this->registerBladeCompiler();
 
-        $this->app->terminating(static function () {
+        $this->app->terminating( static function () {
             Component::flushCache();
-        });
+        } );
     }
 
     /**
@@ -30,7 +31,7 @@ class Provider extends ServiceProvider {
      * @return void
      */
     public function registerBladeFactory() {
-        $this->app->singleton('view', function ( $app ) {
+        $this->app->singleton( 'view', function ( $app ) {
             // Next we need to grab the engine resolver instance that will be used by the
             // environment. The resolver will be used by an environment to get each of
             // the various engine implementations such as plain PHP or Blade engine.
@@ -47,12 +48,12 @@ class Provider extends ServiceProvider {
 
             $factory->share( 'app', $app );
 
-            $app->terminating(static function () {
+            $app->terminating( static function () {
                 Component::forgetFactory();
-            });
+            } );
 
             return $factory;
-        });
+        } );
     }
 
     /**
@@ -97,12 +98,41 @@ class Provider extends ServiceProvider {
      */
     public function boot() {
         // Register the Blade engine implementation.
-        View::addExtension( 'blade.php', 'blade', function () {
-            $compiler = new CompilerEngine( $this->app['blade.compiler'], $this->app['files'] );
+        // Not using $this->registerBladeEngine().
+        View::addExtension( 'blade.php', 'blade', static function () {
+            $app = Container::getInstance();
 
-            $this->app->terminating(static function () use ( $compiler ) {
+            $compiler = new CompilerEngine(
+                $app->make( 'blade.compiler' ),
+                $app->make( 'files' )
+            );
+
+            $app->terminating( static function () use ( $compiler ) {
                 $compiler->forgetCompiledOrNotExpired();
-            });
+            } );
+
+            return $compiler;
+        } );
+    }
+
+    /**
+     * Register the Blade engine implementation.
+     *
+     * @param  \Hybrid\View\Engines\EngineResolver $resolver
+     * @return void
+     */
+    public function registerBladeEngine( $resolver ) {
+        $resolver->register( 'blade', static function () {
+            $app = Container::getInstance();
+
+            $compiler = new CompilerEngine(
+                $app->make( 'blade.compiler' ),
+                $app->make( 'files' )
+            );
+
+            $app->terminating( static function () use ( $compiler ) {
+                $compiler->forgetCompiledOrNotExpired();
+            } );
 
             return $compiler;
         } );

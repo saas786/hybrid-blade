@@ -12,10 +12,11 @@ use Hybrid\Tools\Traits\Conditionable;
 use Hybrid\Tools\Traits\Macroable;
 use IteratorAggregate;
 use JsonSerializable;
+use Stringable;
 use Traversable;
 use function Hybrid\Tools\e as hybridEcho;
 
-class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSerializable, Htmlable {
+class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate, JsonSerializable, Stringable {
 
     use Conditionable;
     use Macroable;
@@ -35,6 +36,15 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
      */
     public function __construct( array $attributes = [] ) {
         $this->attributes = $attributes;
+    }
+
+    /**
+     * Get all of the attribute values.
+     *
+     * @return array
+     */
+    public function all() {
+        return $this->attributes;
     }
 
     /**
@@ -191,7 +201,7 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
      * @return static
      */
     public function onlyProps( $keys ) {
-        return $this->only( $this->extractPropNames( $keys ) );
+        return $this->only( static::extractPropNames( $keys ) );
     }
 
     /**
@@ -201,23 +211,23 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
      * @return static
      */
     public function exceptProps( $keys ) {
-        return $this->except( $this->extractPropNames( $keys ) );
+        return $this->except( static::extractPropNames( $keys ) );
     }
 
     /**
-     * Extract prop names from given keys.
+     * Extract "prop" names from given keys.
      *
-     * @param  mixed|array $keys
+     * @param  array $keys
      * @return array
      */
-    protected function extractPropNames( $keys ) {
+    public static function extractPropNames( array $keys ) {
         $props = [];
 
-        foreach ( $keys as $key => $defaultValue ) {
-            $key = is_numeric( $key ) ? $defaultValue : $key;
+        foreach ( $keys as $key => $default ) {
+            $key = is_numeric( $key ) ? $default : $key;
 
             $props[] = $key;
-            $props[] = Str::kebab( $key );
+            $props[] = \Hybrid\Tools\Str::kebab( $key );
         }
 
         return $props;
@@ -255,27 +265,27 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
      * @return static
      */
     public function merge( array $attributeDefaults = [], $escape = true ) {
-        $attributeDefaults = array_map(fn( $value ) => $this->shouldEscapeAttributeValue( $escape, $value )
+        $attributeDefaults = array_map( fn( $value ) => $this->shouldEscapeAttributeValue( $escape, $value )
                 ? hybridEcho( $value )
-        : $value, $attributeDefaults);
+        : $value, $attributeDefaults );
 
         [$appendableAttributes, $nonAppendableAttributes] = collect( $this->attributes )
-            ->partition(static fn( $value, $key ) => $key === 'class' || $key === 'style' || (
-                        isset( $attributeDefaults[ $key ] ) &&
-                        $attributeDefaults[ $key ] instanceof AppendableAttributeValue
-            ));
+            ->partition( static fn( $value, $key ) => 'class' === $key || 'style' === $key || (
+                isset( $attributeDefaults[ $key ] ) &&
+                $attributeDefaults[ $key ] instanceof AppendableAttributeValue
+            ) );
 
-        $attributes = $appendableAttributes->mapWithKeys(function ( $value, $key ) use ( $attributeDefaults, $escape ) {
+        $attributes = $appendableAttributes->mapWithKeys( function ( $value, $key ) use ( $attributeDefaults, $escape ) {
             $defaultsValue = isset( $attributeDefaults[ $key ] ) && $attributeDefaults[ $key ] instanceof AppendableAttributeValue
                 ? $this->resolveAppendableAttributeDefault( $attributeDefaults, $key, $escape )
                 : ( $attributeDefaults[ $key ] ?? '' );
 
-            if ( $key === 'style' ) {
+            if ( 'style' === $key ) {
                 $value = Str::finish( $value, ';' );
             }
 
             return [ $key => implode( ' ', array_unique( array_filter( [ $defaultsValue, $value ] ) ) ) ];
-        })->merge( $nonAppendableAttributes )->all();
+        } )->merge( $nonAppendableAttributes )->all();
 
         return new static( array_merge( $attributeDefaults, $attributes ) );
     }
@@ -321,6 +331,24 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
         }
 
         return $value;
+    }
+
+    /**
+     * Determine if the attribute bag is empty.
+     *
+     * @return bool
+     */
+    public function isEmpty() {
+        return trim( (string) $this ) === '';
+    }
+
+    /**
+     * Determine if the attribute bag is not empty.
+     *
+     * @return bool
+     */
+    public function isNotEmpty() {
+        return ! $this->isEmpty();
     }
 
     /**
@@ -372,7 +400,7 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
     /**
      * Determine if the given offset exists.
      *
-     * @param  string $offset
+     * @param string $offset
      */
     public function offsetExists( $offset ): bool {
         return isset( $this->attributes[ $offset ] );
@@ -381,7 +409,7 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
     /**
      * Get the value at the given offset.
      *
-     * @param  string $offset
+     * @param string $offset
      */
     public function offsetGet( $offset ): mixed {
         return $this->get( $offset );
@@ -390,8 +418,8 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
     /**
      * Set the value at a given offset.
      *
-     * @param  string $offset
-     * @param  mixed  $value
+     * @param string $offset
+     * @param mixed  $value
      */
     public function offsetSet( $offset, $value ): void {
         $this->attributes[ $offset ] = $value;
@@ -400,7 +428,7 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
     /**
      * Remove the value at the given offset.
      *
-     * @param  string $offset
+     * @param string $offset
      */
     public function offsetUnset( $offset ): void {
         unset( $this->attributes[ $offset ] );
@@ -431,13 +459,12 @@ class ComponentAttributeBag implements ArrayAccess, IteratorAggregate, JsonSeria
         $string = '';
 
         foreach ( $this->attributes as $key => $value ) {
-            if ( $value === false || is_null( $value ) ) {
+            if ( false === $value || is_null( $value ) ) {
                 continue;
             }
 
-            if ( $value === true ) {
-                // Exception for Alpine...
-                $value = $key === 'x-data' ? '' : $key;
+            if ( true === $value ) {
+                $value = 'x-data' === $key || str_starts_with( $key, 'wire:' ) ? '' : $key;
             }
 
             $string .= ' ' . $key . '="' . str_replace( '"', '\\"', trim( $value ) ) . '"';

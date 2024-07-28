@@ -109,9 +109,9 @@ EOF;
      * @return string
      */
     protected function compileSlots( array $slots ) {
-        return collect( $slots )->map(static fn( $slot, $name ) => $name === '__default'
+        return collect( $slots )->map( static fn( $slot, $name ) => '__default' === $name
                 ? null
-        : '<x-slot name="' . $name . '" ' . ( (string) $slot->attributes ) . '>{{ $' . $name . ' }}</x-slot>')->filter()->implode( PHP_EOL );
+        : '<x-slot name="' . $name . '" ' . ( (string) $slot->attributes ) . '>{{ $' . $name . ' }}</x-slot>' )->filter()->implode( PHP_EOL );
     }
 
     /**

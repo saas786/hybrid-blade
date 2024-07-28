@@ -26,11 +26,13 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     use Concerns\CompilesHelpers;
     use Concerns\CompilesIncludes;
     use Concerns\CompilesInjections;
-    use Concerns\CompilesJson;
     use Concerns\CompilesJs;
+    use Concerns\CompilesJson;
     use Concerns\CompilesLayouts;
     use Concerns\CompilesLoops;
     use Concerns\CompilesRawPhp;
+    use Concerns\CompilesSessions;
+    use Concerns\CompilesSessions;
     use Concerns\CompilesStacks;
     use Concerns\CompilesStyles;
     use Concerns\CompilesTranslations;
@@ -249,11 +251,11 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     public function compileString( $value ) {
         [$this->footer, $result] = [ [], '' ];
 
-        $value = $this->storeUncompiledBlocks( $value );
-
         foreach ( $this->prepareStringsForCompilationUsing as $callback ) {
             $value = $callback( $value );
         }
+
+        $value = $this->storeUncompiledBlocks( $value );
 
         // First we will compile the Blade component tags. This is a precompile style
         // step which compiles the component Blade tags into @component directives
@@ -291,7 +293,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
         return str_replace(
             [ '##BEGIN-COMPONENT-CLASS##', '##END-COMPONENT-CLASS##' ],
             '',
-        $result);
+            $result );
     }
 
     /**
@@ -303,11 +305,9 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return string
      */
     public static function render( $string, $data = [], $deleteCachedView = false ) {
-        $component = new class($string) extends Component
-        {
+        $component = new class( $string ) extends Component {
 
-            public function __construct( protected $template ) {
-            }
+            public function __construct( protected $template ) {}
 
             public function render() {
                 return $this->template;
@@ -316,14 +316,14 @@ class BladeCompiler extends Compiler implements CompilerInterface {
         };
 
         $view = Container::getInstance()
-                    ->make( ViewFactory::class )
-                    ->make( $component->resolveView(), $data );
+            ->make( ViewFactory::class )
+            ->make( $component->resolveView(), $data );
 
-        return tap($view->render(), static function () use ( $view, $deleteCachedView ) {
+        return tap( $view->render(), static function () use ( $view, $deleteCachedView ) {
             if ( $deleteCachedView ) {
-                unlink( $view->getPath() );
+                @unlink( $view->getPath() );
             }
-        });
+        } );
     }
 
     /**
@@ -375,7 +375,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return string
      */
     protected function storeVerbatimBlocks( $value ) {
-        return preg_replace_callback( '/(?<!@)@verbatim(.*?)@endverbatim/s', fn( $matches ) => $this->storeRawBlock( $matches[1] ), $value );
+        return preg_replace_callback( '/(?<!@)@verbatim(\s*)(.*?)@endverbatim/s', fn( $matches ) => $matches[1] . $this->storeRawBlock( $matches[2] ), $value );
     }
 
     /**
@@ -385,7 +385,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
      * @return string
      */
     protected function storePhpBlocks( $value ) {
-        return preg_replace_callback( '/(?<!@)@php((?:.(?!(?<!@)@php))*?)@endphp/s', fn( $matches ) => $this->storeRawBlock( "<?php{$matches[1]}?>" ), $value );
+        return preg_replace_callback( '/(?<!@)@php(.*?)@endphp/s', fn( $matches ) => $this->storeRawBlock( "<?php{$matches[1]}?>" ), $value );
     }
 
     /**
@@ -460,7 +460,7 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     protected function parseToken( $token ) {
         [$id, $content] = $token;
 
-        if ( $id === T_INLINE_HTML ) {
+        if ( T_INLINE_HTML === $id ) {
             foreach ( $this->compilers as $type ) {
                 $content = $this->{"compile{$type}"}( $content );
             }
@@ -548,13 +548,13 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     protected function replaceFirstStatement( $search, $replace, $subject, $offset ) {
         $search = (string) $search;
 
-        if ( $search === '' ) {
+        if ( '' === $search ) {
             return $subject;
         }
 
         $position = strpos( $subject, $search, $offset );
 
-        if ( $position !== false ) {
+        if ( false !== $position ) {
             return [
                 substr_replace( $subject, $replace, $position, strlen( $search ) ),
                 $position + strlen( $replace ),
@@ -580,9 +580,9 @@ class BladeCompiler extends Compiler implements CompilerInterface {
         $closing = 0;
 
         foreach ( $tokens as $token ) {
-            if ( $token == ')' ) {
+            if ( ')' == $token ) {
                 ++$closing;
-            } elseif ( $token == '(' ) {
+            } elseif ( '(' == $token ) {
                 ++$opening;
             }
         }
@@ -668,17 +668,17 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     public function if( $name, callable $callback ) {
         $this->conditions[ $name ] = $callback;
 
-        $this->directive($name, static fn( $expression ) => $expression !== ''
+        $this->directive( $name, static fn( $expression ) => '' !== $expression
                     ? "<?php if (\Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php if (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
+        : "<?php if (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>" );
 
-        $this->directive('unless' . $name, static fn( $expression ) => $expression !== ''
+        $this->directive( 'unless' . $name, static fn( $expression ) => '' !== $expression
                 ? "<?php if (! \Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php if (! \Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
+        : "<?php if (! \Hybrid\Blade\Facades\Blade::check('{$name}')): ?>" );
 
-        $this->directive('else' . $name, static fn( $expression ) => $expression !== ''
+        $this->directive( 'else' . $name, static fn( $expression ) => '' !== $expression
                 ? "<?php elseif (\Hybrid\Blade\Facades\Blade::check('{$name}', {$expression})): ?>"
-        : "<?php elseif (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>");
+        : "<?php elseif (\Hybrid\Blade\Facades\Blade::check('{$name}')): ?>" );
 
         $this->directive( 'end' . $name, static fn() => '<?php endif; ?>' );
     }
@@ -774,9 +774,9 @@ class BladeCompiler extends Compiler implements CompilerInterface {
         $prefix ??= $directory;
 
         $this->anonymousComponentNamespaces[ $prefix ] = Str::of( $directory )
-                ->replace( '/', '.' )
-                ->trim( '. ' )
-                ->toString();
+            ->replace( '/', '.' )
+            ->trim( '. ' )
+            ->toString();
     }
 
     /**
@@ -827,9 +827,9 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     public function aliasComponent( $path, $alias = null ) {
         $alias = $alias ?: Arr::last( explode( '.', $path ) );
 
-        $this->directive($alias, static fn( $expression ) => $expression
+        $this->directive( $alias, static fn( $expression ) => $expression
                         ? "<?php \$__env->startComponent('{$path}', {$expression}); ?>"
-        : "<?php \$__env->startComponent('{$path}'); ?>");
+        : "<?php \$__env->startComponent('{$path}'); ?>" );
 
         $this->directive( 'end' . $alias, static fn( $expression ) => '<?php echo $__env->renderComponent(); ?>' );
     }
@@ -855,11 +855,11 @@ class BladeCompiler extends Compiler implements CompilerInterface {
     public function aliasInclude( $path, $alias = null ) {
         $alias = $alias ?: Arr::last( explode( '.', $path ) );
 
-        $this->directive($alias, function ( $expression ) use ( $path ) {
+        $this->directive( $alias, function ( $expression ) use ( $path ) {
             $expression = $this->stripParentheses( $expression ) ?: '[]';
 
             return "<?php echo \$__env->make('{$path}', {$expression}, \Hybrid\Tools\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>";
-        });
+        } );
     }
 
     /**

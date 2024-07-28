@@ -93,7 +93,7 @@ class CompilerEngine extends PhpEngine {
      */
     protected function handleViewException( \Throwable $e, $obLevel ) {
         // if ($e instanceof HttpException || $e instanceof HttpResponseException) {
-            // parent::handleViewException($e, $obLevel);
+        // parent::handleViewException($e, $obLevel);
         // }
 
         $e = new \Hybrid\View\ViewException( $this->getMessage( $e ), 0, 1, $e->getFile(), $e->getLine(), $e );

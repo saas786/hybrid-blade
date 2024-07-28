@@ -2,7 +2,10 @@
 
 namespace Hybrid\Blade;
 
-class ComponentSlot implements Htmlable {
+use Hybrid\Contracts\Htmlable;
+use Stringable;
+
+class ComponentSlot implements Htmlable, Stringable {
 
     /**
      * The slot attribute bag.
@@ -58,7 +61,7 @@ class ComponentSlot implements Htmlable {
      * @return bool
      */
     public function isEmpty() {
-        return $this->contents === '';
+        return '' === $this->contents;
     }
 
     /**
@@ -68,6 +71,24 @@ class ComponentSlot implements Htmlable {
      */
     public function isNotEmpty() {
         return ! $this->isEmpty();
+    }
+
+    /**
+     * Determine if the slot has non-comment content.
+     *
+     * @param  callable|string|null $callable
+     * @return bool
+     */
+    public function hasActualContent( callable|string|null $callable = null ) {
+        if ( is_string( $callable ) && ! function_exists( $callable ) ) {
+            throw new \InvalidArgumentException( 'Callable does not exist.' );
+        }
+
+        return filter_var(
+            $this->contents,
+            FILTER_CALLBACK,
+            [ 'options' => $callable ?? static fn( $input ) => trim( preg_replace( '/<!--([\s\S]*?)-->/', '', $input ) ) ]
+        ) !== '';
     }
 
     /**
