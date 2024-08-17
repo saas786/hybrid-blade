@@ -138,4 +138,19 @@ class Provider extends ServiceProvider {
         } );
     }
 
+	/**
+	 * Register the given view components with a custom prefix.
+	 *
+	 * @param  string  $prefix
+	 * @param  array  $components
+	 * @return void
+	 */
+	protected function loadViewComponentsAs($prefix, array $components)
+	{
+		$this->callAfterResolving(\Hybrid\Blade\Compilers\BladeCompiler::class, function ($blade) use ($prefix, $components) {
+			foreach ($components as $alias => $component) {
+				$blade->component($component, is_string($alias) ? $alias : null, $prefix);
+			}
+		});
+	}
 }
