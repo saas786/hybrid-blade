@@ -3,7 +3,6 @@
 namespace Hybrid\Blade\Concerns;
 
 trait ManagesTranslations {
-
     /**
      * The translation replacements for the translation being rendered.
      *
@@ -14,7 +13,8 @@ trait ManagesTranslations {
     /**
      * Start a translation block.
      *
-     * @param  array $replacements
+     * @param array $replacements
+     *
      * @return void
      */
     public function startTranslation( $replacements = [] ) {
@@ -33,5 +33,4 @@ trait ManagesTranslations {
             trim( ob_get_clean() ), $this->translationReplacements
         );
     }
-
 }

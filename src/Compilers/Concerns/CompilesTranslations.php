@@ -3,11 +3,11 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesTranslations {
-
     /**
      * Compile the lang statements into valid PHP.
      *
-     * @param  string|null $expression
+     * @param string|null $expression
+     *
      * @return string
      */
     protected function compileLang( $expression ) {
@@ -34,11 +34,11 @@ trait CompilesTranslations {
     /**
      * Compile the choice statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileChoice( $expression ) {
         return "<?php echo app('translator')->choice{$expression}; ?>";
     }
-
 }

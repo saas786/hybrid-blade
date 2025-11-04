@@ -9,8 +9,7 @@ use Hybrid\Core\ServiceProvider;
 use Hybrid\View\Facades\View;
 use function Hybrid\Tools\tap;
 
-class Provider extends ServiceProvider {
-
+class BladeServiceProvider extends ServiceProvider {
     /**
      * Register.
      *
@@ -64,27 +63,28 @@ class Provider extends ServiceProvider {
     public function registerBladeCompiler() {
         $this->app->singleton(
             'blade.compiler',
-            static fn( $app ) => tap(
-                new BladeCompiler(
+            function ( $app ) {
+                return tap( new BladeCompiler(
                     $app['files'],
                     $app['config']['view.compiled'],
                     $app['config']->get( 'view.relative_hash', false ) ? $app->basePath() : '',
-                    $app['config']->get( 'view.cache', false ),
-                    $app['config']->get( 'view.compiled_extension', 'php' )
+                    $app['config']->get( 'view.cache', false ), // Note: Intentionally set to false
+                    $app['config']->get( 'view.compiled_extension', 'php' ),
+                    $app['config']->get( 'view.check_cache_timestamps', true )
                 ),
-                static function ( $blade ) {
+                function ( $blade ) {
                     $blade->component( 'dynamic-component', DynamicComponent::class );
-                }
-            )
-        );
+                } );
+            } );
     }
 
     /**
      * Create a new Factory Instance.
      *
-     * @param  \Hybrid\View\Engines\EngineResolver $resolver
-     * @param  \Hybrid\View\ViewFinderInterface    $finder
-     * @param  \Hybrid\Contracts\Events\Dispatcher $events
+     * @param \Hybrid\View\Engines\EngineResolver $resolver
+     * @param \Hybrid\View\ViewFinderInterface    $finder
+     * @param \Hybrid\Contracts\Events\Dispatcher $events
+     *
      * @return \Hybrid\Blade\Factory
      */
     protected function createFactory( $resolver, $finder, $events ) {
@@ -98,7 +98,7 @@ class Provider extends ServiceProvider {
      */
     public function boot() {
         // Register the Blade engine implementation.
-        // Not using $this->registerBladeEngine().
+        // Note: Not using $this->registerBladeEngine().
         View::addExtension( 'blade.php', 'blade', static function () {
             $app = Container::getInstance();
 
@@ -118,7 +118,8 @@ class Provider extends ServiceProvider {
     /**
      * Register the Blade engine implementation.
      *
-     * @param  \Hybrid\View\Engines\EngineResolver $resolver
+     * @param \Hybrid\View\Engines\EngineResolver $resolver
+     *
      * @return void
      */
     public function registerBladeEngine( $resolver ) {
@@ -138,19 +139,19 @@ class Provider extends ServiceProvider {
         } );
     }
 
-	/**
-	 * Register the given view components with a custom prefix.
-	 *
-	 * @param  string  $prefix
-	 * @param  array  $components
-	 * @return void
-	 */
-	protected function loadViewComponentsAs($prefix, array $components)
-	{
-		$this->callAfterResolving(\Hybrid\Blade\Compilers\BladeCompiler::class, function ($blade) use ($prefix, $components) {
-			foreach ($components as $alias => $component) {
-				$blade->component($component, is_string($alias) ? $alias : null, $prefix);
-			}
-		});
-	}
+    /**
+     * Register the given view components with a custom prefix.
+     *
+     * @param string $prefix
+     * @param array  $components
+     *
+     * @return void
+     */
+    protected function loadViewComponentsAs( $prefix, array $components ) {
+        $this->callAfterResolving( BladeCompiler::class, function ( $blade ) use ( $prefix, $components ) {
+            foreach ( $components as $alias => $component ) {
+                $blade->component( $component, is_string( $alias ) ? $alias : null, $prefix );
+            }
+        } );
+    }
 }

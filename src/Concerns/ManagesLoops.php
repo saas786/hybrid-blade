@@ -6,7 +6,6 @@ use Hybrid\Tools\Arr;
 use Hybrid\Tools\LazyCollection;
 
 trait ManagesLoops {
-
     /**
      * The stack of in-progress loops.
      *
@@ -17,13 +16,14 @@ trait ManagesLoops {
     /**
      * Add new loop to the stack.
      *
-     * @param  \Countable|array $data
+     * @param \Countable|array $data
+     *
      * @return void
      */
     public function addLoop( $data ) {
         $length = is_countable( $data ) && ! $data instanceof LazyCollection
-                            ? count( $data )
-                            : null;
+            ? count( $data )
+            : null;
 
         $parent = Arr::last( $this->loopsStack );
 
@@ -33,7 +33,7 @@ trait ManagesLoops {
             'remaining' => $length ?? null,
             'count'     => $length,
             'first'     => true,
-            'last'      => isset( $length ) ? 1 === $length : null,
+            'last'      => isset( $length ) ? 1 == $length : null,
             'odd'       => false,
             'even'      => true,
             'depth'     => count( $this->loopsStack ) + 1,
@@ -52,11 +52,11 @@ trait ManagesLoops {
         $this->loopsStack[ $index ] = array_merge( $this->loopsStack[ $index ], [
             'iteration' => $loop['iteration'] + 1,
             'index'     => $loop['iteration'],
-            'first'     => 0 === $loop['iteration'],
+            'first'     => 0 == $loop['iteration'],
             'odd'       => ! $loop['odd'],
             'even'      => ! $loop['even'],
             'remaining' => isset( $loop['count'] ) ? $loop['remaining'] - 1 : null,
-            'last'      => isset( $loop['count'] ) ? $loop['count'] - 1 === $loop['iteration'] : null,
+            'last'      => isset( $loop['count'] ) ? $loop['count'] - 1 == $loop['iteration'] : null,
         ] );
     }
 
@@ -88,5 +88,4 @@ trait ManagesLoops {
     public function getLoopStack() {
         return $this->loopsStack;
     }
-
 }

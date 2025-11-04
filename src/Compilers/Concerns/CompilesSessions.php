@@ -3,11 +3,11 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesSessions {
-
     /**
      * Compile the session statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileSession( $expression ) {
@@ -22,7 +22,8 @@ $value = session()->get($__sessionArgs[0]); ?>';
     /**
      * Compile the endsession statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileEndsession( $expression ) {
@@ -32,5 +33,4 @@ if (isset($__sessionPrevious) && empty($__sessionPrevious)) { unset($__sessionPr
 endif;
 unset($__sessionArgs); ?>';
     }
-
 }

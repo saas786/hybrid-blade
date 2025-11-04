@@ -2,8 +2,9 @@
 
 namespace Hybrid\Blade\Concerns;
 
-trait ManagesFragments {
+use InvalidArgumentException;
 
+trait ManagesFragments {
     /**
      * All of the captured, rendered fragments.
      *
@@ -21,7 +22,8 @@ trait ManagesFragments {
     /**
      * Start injecting content into a fragment.
      *
-     * @param  string $fragment
+     * @param string $fragment
+     *
      * @return void
      */
     public function startFragment( $fragment ) {
@@ -34,11 +36,12 @@ trait ManagesFragments {
      * Stop injecting content into a fragment.
      *
      * @return string
+     *
      * @throws \InvalidArgumentException
      */
     public function stopFragment() {
         if ( empty( $this->fragmentStack ) ) {
-            throw new \InvalidArgumentException( 'Cannot end a fragment without first starting one.' );
+            throw new InvalidArgumentException( 'Cannot end a fragment without first starting one.' );
         }
 
         $last = array_pop( $this->fragmentStack );
@@ -51,8 +54,9 @@ trait ManagesFragments {
     /**
      * Get the contents of a fragment.
      *
-     * @param  string      $name
-     * @param  string|null $default
+     * @param string      $name
+     * @param string|null $default
+     *
      * @return mixed
      */
     public function getFragment( $name, $default = null ) {
@@ -77,5 +81,4 @@ trait ManagesFragments {
         $this->fragments     = [];
         $this->fragmentStack = [];
     }
-
 }

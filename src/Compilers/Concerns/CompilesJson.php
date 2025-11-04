@@ -3,7 +3,6 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesJson {
-
     /**
      * The default JSON encoding options.
      *
@@ -14,7 +13,8 @@ trait CompilesJson {
     /**
      * Compile the JSON statement into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileJson( $expression ) {
@@ -26,5 +26,4 @@ trait CompilesJson {
 
         return "<?php echo json_encode($parts[0], $options, $depth) ?>";
     }
-
 }

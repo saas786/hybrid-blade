@@ -3,10 +3,10 @@
 namespace Hybrid\Blade;
 
 use Hybrid\Contracts\Htmlable;
+use InvalidArgumentException;
 use Stringable;
 
 class ComponentSlot implements Htmlable, Stringable {
-
     /**
      * The slot attribute bag.
      *
@@ -24,9 +24,8 @@ class ComponentSlot implements Htmlable, Stringable {
     /**
      * Create a new slot instance.
      *
-     * @param  string $contents
-     * @param  array  $attributes
-     * @return void
+     * @param string $contents
+     * @param array  $attributes
      */
     public function __construct( $contents = '', $attributes = [] ) {
         $this->contents = $contents;
@@ -37,7 +36,8 @@ class ComponentSlot implements Htmlable, Stringable {
     /**
      * Set the extra attributes that the slot should make available.
      *
-     * @param  array $attributes
+     * @param array $attributes
+     *
      * @return $this
      */
     public function withAttributes( array $attributes ) {
@@ -76,18 +76,19 @@ class ComponentSlot implements Htmlable, Stringable {
     /**
      * Determine if the slot has non-comment content.
      *
-     * @param  callable|string|null $callable
+     * @param callable|string|null $callable
+     *
      * @return bool
      */
     public function hasActualContent( callable|string|null $callable = null ) {
         if ( is_string( $callable ) && ! function_exists( $callable ) ) {
-            throw new \InvalidArgumentException( 'Callable does not exist.' );
+            throw new InvalidArgumentException( 'Callable does not exist.' );
         }
 
         return filter_var(
             $this->contents,
             FILTER_CALLBACK,
-            [ 'options' => $callable ?? static fn( $input ) => trim( preg_replace( '/<!--([\s\S]*?)-->/', '', $input ) ) ]
+            [ 'options' => $callable ?? fn( $input ) => trim( preg_replace( '/<!--([\s\S]*?)-->/', '', $input ) ) ]
         ) !== '';
     }
 
@@ -99,5 +100,4 @@ class ComponentSlot implements Htmlable, Stringable {
     public function __toString() {
         return $this->toHtml();
     }
-
 }

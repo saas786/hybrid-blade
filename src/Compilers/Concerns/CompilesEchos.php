@@ -3,10 +3,9 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 use Closure;
-use Hybrid\Tools\Str;
+use Hybrid\Tools\Stringable;
 
 trait CompilesEchos {
-
     /**
      * Custom rendering callbacks for stringable objects.
      *
@@ -17,8 +16,9 @@ trait CompilesEchos {
     /**
      * Add a handler to be executed before echoing a given class.
      *
-     * @param  string|callable $class
-     * @param  callable|null   $handler
+     * @param string|callable $class
+     * @param callable|null   $handler
+     *
      * @return void
      */
     public function stringable( $class, $handler = null ) {
@@ -32,7 +32,8 @@ trait CompilesEchos {
     /**
      * Compile Blade echos into valid PHP.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     public function compileEchos( $value ) {
@@ -59,7 +60,8 @@ trait CompilesEchos {
     /**
      * Compile the "raw" echo statements.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function compileRawEchos( $value ) {
@@ -79,7 +81,8 @@ trait CompilesEchos {
     /**
      * Compile the "regular" echo statements.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function compileRegularEchos( $value ) {
@@ -99,7 +102,8 @@ trait CompilesEchos {
     /**
      * Compile the escaped echo statements.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function compileEscapedEchos( $value ) {
@@ -119,7 +123,8 @@ trait CompilesEchos {
     /**
      * Add an instance of the blade echo handler to the start of the compiled string.
      *
-     * @param  string $result
+     * @param string $result
+     *
      * @return string
      */
     protected function addBladeCompilerVariable( $result ) {
@@ -129,13 +134,16 @@ trait CompilesEchos {
     /**
      * Wrap the echoable value in an echo handler if applicable.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function wrapInEchoHandler( $value ) {
-        $value = Str::of( $value )
+        $value = ( new Stringable( $value ) )
             ->trim()
-            ->when( str_ends_with( $value, ';' ), static fn( $str ) => $str->beforeLast( ';' ) );
+            ->when( str_ends_with( $value, ';' ), function ( $str ) {
+                return $str->beforeLast( ';' );
+            } );
 
         return empty( $this->echoHandlers ) ? $value : '$__bladeCompiler->applyEchoHandler(' . $value . ')';
     }
@@ -143,7 +151,8 @@ trait CompilesEchos {
     /**
      * Apply the echo handler for the value if it exists.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     public function applyEchoHandler( $value ) {
@@ -157,5 +166,4 @@ trait CompilesEchos {
 
         return $value;
     }
-
 }

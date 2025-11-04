@@ -2,8 +2,9 @@
 
 namespace Hybrid\Blade\Compilers\Concerns;
 
-trait CompilesLoops {
+use Hybrid\Blade\Contracts\ViewCompilationException;
 
+trait CompilesLoops {
     /**
      * Counter to keep track of nested forelse statements.
      *
@@ -14,9 +15,11 @@ trait CompilesLoops {
     /**
      * Compile the for-else statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
-     * @throws \Hybrid\Blade\Contracts\View\ViewCompilationException
+     *
+     * @throws \Hybrid\Blade\Contracts\ViewCompilationException
      */
     protected function compileForelse( $expression ) {
         $empty = '$__empty_' . ++$this->forElseCounter;
@@ -24,7 +27,7 @@ trait CompilesLoops {
         preg_match( '/\( *(.+) +as +(.+)\)$/is', $expression ?? '', $matches );
 
         if ( count( $matches ) === 0 ) {
-            throw new \Hybrid\Blade\Contracts\View\ViewCompilationException( 'Malformed @forelse statement.' );
+            throw new ViewCompilationException( 'Malformed @forelse statement.' );
         }
 
         $iteratee = trim( $matches[1] );
@@ -41,7 +44,8 @@ trait CompilesLoops {
     /**
      * Compile the for-else-empty and empty statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileEmpty( $expression ) {
@@ -75,7 +79,8 @@ trait CompilesLoops {
     /**
      * Compile the for statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileFor( $expression ) {
@@ -85,15 +90,17 @@ trait CompilesLoops {
     /**
      * Compile the for-each statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
-     * @throws \Hybrid\Blade\Contracts\View\ViewCompilationException
+     *
+     * @throws \Hybrid\Blade\Contracts\ViewCompilationException
      */
     protected function compileForeach( $expression ) {
         preg_match( '/\( *(.+) +as +(.*)\)$/is', $expression ?? '', $matches );
 
         if ( count( $matches ) === 0 ) {
-            throw new \Hybrid\Blade\Contracts\View\ViewCompilationException( 'Malformed @foreach statement.' );
+            throw new ViewCompilationException( 'Malformed @foreach statement.' );
         }
 
         $iteratee = trim( $matches[1] );
@@ -110,7 +117,8 @@ trait CompilesLoops {
     /**
      * Compile the break statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileBreak( $expression ) {
@@ -126,7 +134,8 @@ trait CompilesLoops {
     /**
      * Compile the continue statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileContinue( $expression ) {
@@ -160,7 +169,8 @@ trait CompilesLoops {
     /**
      * Compile the while statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileWhile( $expression ) {
@@ -175,5 +185,4 @@ trait CompilesLoops {
     protected function compileEndwhile() {
         return '<?php endwhile; ?>';
     }
-
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Hybrid\Blade\Contracts\View;
+namespace Hybrid\Blade\Contracts;
 
 class ViewCompilationException extends \Exception {
 

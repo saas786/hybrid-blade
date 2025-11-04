@@ -6,10 +6,9 @@ use Hybrid\Blade\AnonymousComponent;
 use Hybrid\Blade\ComponentAttributeBag;
 use Hybrid\Contracts\CanBeEscapedWhenCastToString;
 use Hybrid\Tools\Str;
-use function Hybrid\Tools\e;
+use function Hybrid\Tools\e as hybridEcho;
 
 trait CompilesComponents {
-
     /**
      * The component name hash stack.
      *
@@ -20,13 +19,14 @@ trait CompilesComponents {
     /**
      * Compile the component statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileComponent( $expression ) {
         [$component, $alias, $data] = str_contains( $expression, ',' )
-                    ? array_map( 'trim', explode( ',', trim( $expression, '()' ), 3 ) ) + [ '', '', '' ]
-                    : [ trim( $expression, '()' ), '', '' ];
+            ? array_map( trim( ...), explode( ',', trim( $expression, '()' ), 3 ) ) + [ '', '', '' ]
+            : [ trim( $expression, '()' ), '', '' ];
 
         $component = trim( $component, '\'"' );
 
@@ -44,6 +44,8 @@ trait CompilesComponents {
     /**
      * Get a new component hash for a component name.
      *
+     * @param string $component
+     *
      * @return string
      */
     public static function newComponentHash( string $component ) {
@@ -54,6 +56,11 @@ trait CompilesComponents {
 
     /**
      * Compile a class component opening.
+     *
+     * @param string $component
+     * @param string $alias
+     * @param string $data
+     * @param string $hash
      *
      * @return string
      */
@@ -101,7 +108,8 @@ trait CompilesComponents {
     /**
      * Compile the slot statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileSlot( $expression ) {
@@ -120,7 +128,8 @@ trait CompilesComponents {
     /**
      * Compile the component-first statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileComponentFirst( $expression ) {
@@ -139,7 +148,8 @@ trait CompilesComponents {
     /**
      * Compile the prop statement into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileProps( $expression ) {
@@ -171,13 +181,14 @@ foreach (\$attributes->all() as \$__key => \$__value) {
     if (array_key_exists(\$__key, \$__defined_vars)) unset(\$\$__key);
 }
 
-unset(\$__defined_vars); ?>";
+unset(\$__defined_vars, \$__key, \$__value); ?>";
     }
 
     /**
      * Compile the aware statement into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileAware( $expression ) {
@@ -190,7 +201,8 @@ unset(\$__defined_vars); ?>";
     /**
      * Sanitize the given component attribute value.
      *
-     * @param  mixed $value
+     * @param mixed $value
+     *
      * @return mixed
      */
     public static function sanitizeComponentAttribute( $value ) {
@@ -200,8 +212,7 @@ unset(\$__defined_vars); ?>";
 
         return is_string( $value ) ||
                 ( is_object( $value ) && ! $value instanceof ComponentAttributeBag && method_exists( $value, '__toString' ) )
-                        ? e( $value )
+                        ? hybridEcho( $value )
                         : $value;
     }
-
 }

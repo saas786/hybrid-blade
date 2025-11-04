@@ -4,11 +4,14 @@ namespace Hybrid\Blade;
 
 use ArrayAccess;
 use ArrayIterator;
+use Hybrid\Contracts\Arrayable;
 use Hybrid\Contracts\Htmlable;
 use Hybrid\Tools\Arr;
+use Hybrid\Tools\Collection;
 use Hybrid\Tools\HtmlString;
 use Hybrid\Tools\Str;
 use Hybrid\Tools\Traits\Conditionable;
+use Hybrid\Tools\Traits\InteractsWithData;
 use Hybrid\Tools\Traits\Macroable;
 use IteratorAggregate;
 use JsonSerializable;
@@ -16,9 +19,10 @@ use Stringable;
 use Traversable;
 use function Hybrid\Tools\e as hybridEcho;
 
-class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate, JsonSerializable, Stringable {
+class ComponentAttributeBag implements Arrayable, ArrayAccess, Htmlable, IteratorAggregate, JsonSerializable, Stringable {
 
     use Conditionable;
+    use InteractsWithData;
     use Macroable;
 
     /**
@@ -31,26 +35,32 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Create a new component attribute bag instance.
      *
-     * @param  array $attributes
-     * @return void
+     * @param array $attributes
      */
     public function __construct( array $attributes = [] ) {
-        $this->attributes = $attributes;
+        $this->setAttributes( $attributes );
     }
 
     /**
-     * Get all of the attribute values.
+     * Get all the attribute values.
+     *
+     * @param mixed $keys
      *
      * @return array
      */
-    public function all() {
-        return $this->attributes;
+    public function all( $keys = null ) {
+        if ( is_null( $keys ) ) {
+            return $this->attributes;
+        }
+
+        return $this->only( $keys )->toArray();
     }
 
     /**
      * Get the first attribute's value.
      *
-     * @param  mixed $default
+     * @param mixed $default
+     *
      * @return mixed
      */
     public function first( $default = null ) {
@@ -60,8 +70,9 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Get a given attribute from the attribute array.
      *
-     * @param  string $key
-     * @param  mixed  $default
+     * @param string $key
+     * @param mixed  $default
+     *
      * @return mixed
      */
     public function get( $key, $default = null ) {
@@ -69,59 +80,26 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     }
 
     /**
-     * Determine if a given attribute exists in the attribute array.
+     * Retrieve data from the instance.
      *
-     * @param  array|string $key
-     * @return bool
+     * @param string|null $key
+     * @param mixed       $default
+     *
+     * @return mixed
      */
-    public function has( $key ) {
-        $keys = is_array( $key ) ? $key : func_get_args();
-
-        foreach ( $keys as $value ) {
-            if ( ! array_key_exists( $value, $this->attributes ) ) {
-                return false;
-            }
+    protected function data( $key = null, $default = null ) {
+        if ( is_null( $key ) ) {
+            return $this->attributes;
         }
 
-        return true;
-    }
-
-    /**
-     * Determine if any of the keys exist in the attribute array.
-     *
-     * @param  array|string $key
-     * @return bool
-     */
-    public function hasAny( $key ) {
-        if ( ! count( $this->attributes ) ) {
-            return false;
-        }
-
-        $keys = is_array( $key ) ? $key : func_get_args();
-
-        foreach ( $keys as $value ) {
-            if ( $this->has( $value ) ) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine if a given attribute is missing from the attribute array.
-     *
-     * @param  string $key
-     * @return bool
-     */
-    public function missing( $key ) {
-        return ! $this->has( $key );
+        return $this->get( $key, $default );
     }
 
     /**
      * Only include the given attribute from the attribute array.
      *
-     * @param  mixed $keys
+     * @param mixed $keys
+     *
      * @return static
      */
     public function only( $keys ) {
@@ -139,7 +117,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Exclude the given attribute from the attribute array.
      *
-     * @param  mixed|array $keys
+     * @param mixed|array $keys
+     *
      * @return static
      */
     public function except( $keys ) {
@@ -157,37 +136,45 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Filter the attributes, returning a bag of attributes that pass the filter.
      *
-     * @param  callable $callback
+     * @param callable $callback
+     *
      * @return static
      */
     public function filter( $callback ) {
-        return new static( collect( $this->attributes )->filter( $callback )->all() );
+        return new static( ( new Collection( $this->attributes ) )->filter( $callback )->all() );
     }
 
     /**
      * Return a bag of attributes that have keys starting with the given value / pattern.
      *
-     * @param  string|array<string> $needles
+     * @param string|array<string> $needles
+     *
      * @return static
      */
     public function whereStartsWith( $needles ) {
-        return $this->filter( static fn( $value, $key ) => Str::startsWith( $key, $needles ) );
+        return $this->filter( function ( $value, $key ) use ( $needles ) {
+            return Str::startsWith( $key, $needles );
+        } );
     }
 
     /**
      * Return a bag of attributes with keys that do not start with the given value / pattern.
      *
-     * @param  string|array<string> $needles
+     * @param string|array<string> $needles
+     *
      * @return static
      */
     public function whereDoesntStartWith( $needles ) {
-        return $this->filter( static fn( $value, $key ) => ! Str::startsWith( $key, $needles ) );
+        return $this->filter( function ( $value, $key ) use ( $needles ) {
+            return ! Str::startsWith( $key, $needles );
+        } );
     }
 
     /**
      * Return a bag of attributes that have keys starting with the given value / pattern.
      *
-     * @param  string|array<string> $needles
+     * @param string|array<string> $needles
+     *
      * @return static
      */
     public function thatStartWith( $needles ) {
@@ -197,7 +184,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Only include the given attribute from the attribute array.
      *
-     * @param  mixed|array $keys
+     * @param mixed|array $keys
+     *
      * @return static
      */
     public function onlyProps( $keys ) {
@@ -207,7 +195,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Exclude the given attribute from the attribute array.
      *
-     * @param  mixed|array $keys
+     * @param mixed|array $keys
+     *
      * @return static
      */
     public function exceptProps( $keys ) {
@@ -215,28 +204,10 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     }
 
     /**
-     * Extract "prop" names from given keys.
-     *
-     * @param  array $keys
-     * @return array
-     */
-    public static function extractPropNames( array $keys ) {
-        $props = [];
-
-        foreach ( $keys as $key => $default ) {
-            $key = is_numeric( $key ) ? $default : $key;
-
-            $props[] = $key;
-            $props[] = \Hybrid\Tools\Str::kebab( $key );
-        }
-
-        return $props;
-    }
-
-    /**
      * Conditionally merge classes into the attribute bag.
      *
-     * @param  mixed|array $classList
+     * @param mixed|array $classList
+     *
      * @return static
      */
     public function class( $classList ) {
@@ -248,7 +219,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Conditionally merge styles into the attribute bag.
      *
-     * @param  mixed|array $styleList
+     * @param mixed|array $styleList
+     *
      * @return static
      */
     public function style( $styleList ) {
@@ -260,20 +232,25 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Merge additional attributes / values into the attribute bag.
      *
-     * @param  array $attributeDefaults
-     * @param  bool  $escape
+     * @param array $attributeDefaults
+     * @param bool  $escape
+     *
      * @return static
      */
     public function merge( array $attributeDefaults = [], $escape = true ) {
-        $attributeDefaults = array_map( fn( $value ) => $this->shouldEscapeAttributeValue( $escape, $value )
+        $attributeDefaults = array_map( function ( $value ) use ( $escape ) {
+            return $this->shouldEscapeAttributeValue( $escape, $value )
                 ? hybridEcho( $value )
-        : $value, $attributeDefaults );
+                : $value;
+        }, $attributeDefaults );
 
-        [$appendableAttributes, $nonAppendableAttributes] = collect( $this->attributes )
-            ->partition( static fn( $value, $key ) => 'class' === $key || 'style' === $key || (
-                isset( $attributeDefaults[ $key ] ) &&
-                $attributeDefaults[ $key ] instanceof AppendableAttributeValue
-            ) );
+        [$appendableAttributes, $nonAppendableAttributes] = ( new Collection( $this->attributes ) )
+            ->partition( function ( $value, $key ) use ( $attributeDefaults ) {
+                return 'class' === $key || 'style' === $key || (
+                        isset( $attributeDefaults[ $key ] ) &&
+                        $attributeDefaults[ $key ] instanceof AppendableAttributeValue
+                    );
+            } );
 
         $attributes = $appendableAttributes->mapWithKeys( function ( $value, $key ) use ( $attributeDefaults, $escape ) {
             $defaultsValue = isset( $attributeDefaults[ $key ] ) && $attributeDefaults[ $key ] instanceof AppendableAttributeValue
@@ -293,8 +270,9 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Determine if the specific attribute value should be escaped.
      *
-     * @param  bool  $escape
-     * @param  mixed $value
+     * @param bool  $escape
+     * @param mixed $value
+     *
      * @return bool
      */
     protected function shouldEscapeAttributeValue( $escape, $value ) {
@@ -310,7 +288,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Create a new appendable attribute value.
      *
-     * @param  mixed $value
+     * @param mixed $value
+     *
      * @return \Hybrid\View\AppendableAttributeValue
      */
     public function prepends( $value ) {
@@ -320,9 +299,10 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Resolve an appendable attribute value default value.
      *
-     * @param  array  $attributeDefaults
-     * @param  string $key
-     * @param  bool   $escape
+     * @param array  $attributeDefaults
+     * @param string $key
+     * @param bool   $escape
+     *
      * @return mixed
      */
     protected function resolveAppendableAttributeDefault( $attributeDefaults, $key, $escape ) {
@@ -363,11 +343,13 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Set the underlying attributes.
      *
-     * @param  array $attributes
+     * @param array $attributes
+     *
      * @return void
      */
     public function setAttributes( array $attributes ) {
-        if ( isset( $attributes['attributes'] ) && $attributes['attributes'] instanceof self ) {
+        if ( isset( $attributes['attributes'] ) &&
+            $attributes['attributes'] instanceof self ) {
             $parentBag = $attributes['attributes'];
 
             unset( $attributes['attributes'] );
@@ -376,6 +358,26 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
         }
 
         $this->attributes = $attributes;
+    }
+
+    /**
+     * Extract "prop" names from given keys.
+     *
+     * @param array $keys
+     *
+     * @return array
+     */
+    public static function extractPropNames( array $keys ) {
+        $props = [];
+
+        foreach ( $keys as $key => $default ) {
+            $key = is_numeric( $key ) ? $default : $key;
+
+            $props[] = $key;
+            $props[] = Str::kebab( $key );
+        }
+
+        return $props;
     }
 
     /**
@@ -390,7 +392,8 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     /**
      * Merge additional attributes / values into the attribute bag.
      *
-     * @param  array $attributeDefaults
+     * @param array $attributeDefaults
+     *
      * @return \Hybrid\Tools\HtmlString
      */
     public function __invoke( array $attributeDefaults = [] ) {
@@ -451,6 +454,15 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
     }
 
     /**
+     * Get all the attribute values.
+     *
+     * @return array
+     */
+    public function toArray() {
+        return $this->all();
+    }
+
+    /**
      * Implode the attributes into a single HTML ready string.
      *
      * @return string
@@ -472,5 +484,4 @@ class ComponentAttributeBag implements ArrayAccess, Htmlable, IteratorAggregate,
 
         return trim( $string );
     }
-
 }

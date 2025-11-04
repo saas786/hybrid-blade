@@ -5,9 +5,10 @@ namespace Hybrid\Blade\Compilers\Concerns;
 use Hybrid\Tools\Js;
 
 trait CompilesJs {
-
     /**
      * Compile the "@js" directive into valid PHP.
+     *
+     * @param string $expression
      *
      * @return string
      */
@@ -17,5 +18,4 @@ trait CompilesJs {
             Js::class, $this->stripParentheses( $expression )
         );
     }
-
 }

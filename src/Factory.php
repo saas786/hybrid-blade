@@ -2,7 +2,7 @@
 
 namespace Hybrid\Blade;
 
-use function Hybrid\Tools\collect;
+use Hybrid\Tools\Collection;
 use function Hybrid\Tools\value;
 
 class Factory extends \Hybrid\View\Factory {
@@ -32,30 +32,35 @@ class Factory extends \Hybrid\View\Factory {
     /**
      * Get the evaluated contents of a given fragment.
      *
-     * @param  string $fragment
+     * @param string $fragment
+     *
      * @return string
      */
     public function fragment( $fragment ) {
-        return $this->render( fn() => $this->factory->getFragment( $fragment ) );
+        return $this->render( function () use ( $fragment ) {
+            return $this->factory->getFragment( $fragment );
+        } );
     }
 
     /**
      * Get the evaluated contents for a given array of fragments or return all fragments.
      *
-     * @param  array|null $fragments
+     * @param array|null $fragments
+     *
      * @return string
      */
     public function fragments( ?array $fragments = null ) {
         return is_null( $fragments )
             ? $this->allFragments()
-            : collect( $fragments )->map( fn( $f ) => $this->fragment( $f ) )->implode( '' );
+            : ( new Collection( $fragments ) )->map( fn( $f ) => $this->fragment( $f ) )->implode( '' );
     }
 
     /**
      * Get the evaluated contents of a given fragment if the given condition is true.
      *
-     * @param  bool   $boolean
-     * @param  string $fragment
+     * @param bool   $boolean
+     * @param string $fragment
+     *
      * @return string
      */
     public function fragmentIf( $boolean, $fragment ) {
@@ -69,8 +74,9 @@ class Factory extends \Hybrid\View\Factory {
     /**
      * Get the evaluated contents for a given array of fragments if the given condition is true.
      *
-     * @param  bool       $boolean
-     * @param  array|null $fragments
+     * @param bool       $boolean
+     * @param array|null $fragments
+     *
      * @return string
      */
     public function fragmentsIf( $boolean, ?array $fragments = null ) {
@@ -87,7 +93,19 @@ class Factory extends \Hybrid\View\Factory {
      * @return string
      */
     protected function allFragments() {
-        return collect( $this->render( fn() => $this->factory->getFragments() ) )->implode( '' );
+        return ( new Collection( $this->render( fn() => $this->factory->getFragments() ) ) )->implode( '' );
     }
 
+    /**
+     * Get the sections of the rendered view.
+     *
+     * @return array
+     *
+     * @throws \Throwable
+     */
+    public function renderSections() {
+        return $this->render( function () {
+            return $this->factory->getSections();
+        } );
+    }
 }

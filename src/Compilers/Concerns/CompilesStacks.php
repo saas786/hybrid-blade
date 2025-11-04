@@ -5,11 +5,11 @@ namespace Hybrid\Blade\Compilers\Concerns;
 use Hybrid\Tools\Str;
 
 trait CompilesStacks {
-
     /**
      * Compile the stack statements into the content.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileStack( $expression ) {
@@ -19,7 +19,8 @@ trait CompilesStacks {
     /**
      * Compile the push statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compilePush( $expression ) {
@@ -29,7 +30,8 @@ trait CompilesStacks {
     /**
      * Compile the push-once statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compilePushOnce( $expression ) {
@@ -64,7 +66,8 @@ $__env->startPush(' . $stack . '); ?>';
     /**
      * Compile the prepend statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compilePrepend( $expression ) {
@@ -74,7 +77,8 @@ $__env->startPush(' . $stack . '); ?>';
     /**
      * Compile the prepend-once statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compilePrependOnce( $expression ) {
@@ -105,5 +109,4 @@ $__env->startPrepend(' . $stack . '); ?>';
     protected function compileEndprependOnce() {
         return '<?php $__env->stopPrepend(); endif; ?>';
     }
-
 }

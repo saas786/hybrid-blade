@@ -3,11 +3,11 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesErrors {
-
     /**
      * Compile the error statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileError( $expression ) {
@@ -23,7 +23,8 @@ $message = $__bag->first($__errorArgs[0]); ?>';
     /**
      * Compile the enderror statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileEnderror( $expression ) {
@@ -32,5 +33,4 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>';
     }
-
 }

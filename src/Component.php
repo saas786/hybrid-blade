@@ -6,13 +6,13 @@ use Closure;
 use Hybrid\Container\Container;
 use Hybrid\Contracts\Htmlable;
 use Hybrid\Contracts\View\View as ViewContract;
+use Hybrid\Filesystem\Filesystem;
+use Hybrid\Tools\Collection;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
-use function Hybrid\Tools\collect;
 
 abstract class Component {
-
     /**
      * The properties / methods that should not be exposed to the component.
      *
@@ -93,7 +93,8 @@ abstract class Component {
     /**
      * Resolve the component instance with the given data.
      *
-     * @param  array $data
+     * @param array $data
+     *
      * @return static
      */
     public static function resolve( $data ) {
@@ -124,7 +125,7 @@ abstract class Component {
             $constructor = $class->getConstructor();
 
             static::$constructorParametersCache[ static::class ] = $constructor
-                ? collect( $constructor->getParameters() )->map->getName()->all()
+                ? ( new Collection( $constructor->getParameters() ) )->map->getName()->all()
                 : [];
         }
 
@@ -155,14 +156,17 @@ abstract class Component {
             return $this->extractBladeViewFromString( $view );
         };
 
-        return $view instanceof Closure ? static fn( array $data = [] ) => $resolver( $view( $data ) )
+        return $view instanceof Closure ? function ( array $data = [] ) use ( $view, $resolver ) {
+            return $resolver( $view( $data ) );
+        }
         : $resolver( $view );
     }
 
     /**
      * Create a Blade view with the raw component string content.
      *
-     * @param  string $contents
+     * @param string $contents
+     *
      * @return string
      */
     protected function extractBladeViewFromString( $contents ) {
@@ -182,8 +186,9 @@ abstract class Component {
     /**
      * Create a Blade view with the raw component string content.
      *
-     * @param  \Hybrid\Contracts\View\Factory $factory
-     * @param  string                         $contents
+     * @param \Hybrid\Contracts\View\Factory $factory
+     * @param string                         $contents
+     *
      * @return string
      */
     protected function createBladeViewFromString( $factory, $contents ) {
@@ -192,12 +197,14 @@ abstract class Component {
             $directory = Container::getInstance()['config']->get( 'view.compiled' )
         );
 
-        if ( ! is_file( $viewFile = $directory . '/' . hash( 'xxh128', $contents ) . '.blade.php' ) ) {
+        $viewFile = $directory . '/' . hash( 'xxh128', $contents ) . '.blade.php';
+
+        if ( ! is_file( $viewFile ) || filesize( $viewFile ) === 0 ) {
             if ( ! is_dir( $directory ) ) {
                 mkdir( $directory, 0755, true );
             }
 
-            file_put_contents( $viewFile, $contents );
+            ( new Filesystem )->replace( $viewFile, $contents );
         }
 
         return '__components::' . basename( $viewFile, '.blade.php' );
@@ -223,15 +230,16 @@ abstract class Component {
      * @return array
      */
     protected function extractPublicProperties() {
-        $class = static::class;
+        $class = get_class( $this );
 
         if ( ! isset( static::$propertyCache[ $class ] ) ) {
             $reflection = new ReflectionClass( $this );
 
-            static::$propertyCache[ $class ] = collect( $reflection->getProperties( ReflectionProperty::IS_PUBLIC ) )
-                ->reject( static fn( ReflectionProperty $property ) => $property->isStatic() )
+            static::$propertyCache[ $class ] = ( new Collection( $reflection->getProperties( ReflectionProperty::IS_PUBLIC ) ) )
+                ->reject( fn( ReflectionProperty $property ) => $property->isStatic() )
                 ->reject( fn( ReflectionProperty $property ) => $this->shouldIgnore( $property->getName() ) )
-                ->map( static fn( ReflectionProperty $property ) => $property->getName() )->all();
+                ->map( fn( ReflectionProperty $property ) => $property->getName() )
+                ->all();
         }
 
         $values = [];
@@ -249,14 +257,14 @@ abstract class Component {
      * @return array
      */
     protected function extractPublicMethods() {
-        $class = static::class;
+        $class = get_class( $this );
 
         if ( ! isset( static::$methodCache[ $class ] ) ) {
             $reflection = new ReflectionClass( $this );
 
-            static::$methodCache[ $class ] = collect( $reflection->getMethods( ReflectionMethod::IS_PUBLIC ) )
+            static::$methodCache[ $class ] = ( new Collection( $reflection->getMethods( ReflectionMethod::IS_PUBLIC ) ) )
                 ->reject( fn( ReflectionMethod $method ) => $this->shouldIgnore( $method->getName() ) )
-                ->map( static fn( ReflectionMethod $method ) => $method->getName() );
+                ->map( fn( ReflectionMethod $method ) => $method->getName() );
         }
 
         $values = [];
@@ -271,6 +279,8 @@ abstract class Component {
     /**
      * Create a callable variable from the given method.
      *
+     * @param \ReflectionMethod $method
+     *
      * @return mixed
      */
     protected function createVariableFromMethod( ReflectionMethod $method ) {
@@ -282,16 +292,21 @@ abstract class Component {
     /**
      * Create an invokable, toStringable variable for the given component method.
      *
+     * @param string $method
+     *
      * @return \Hybrid\View\InvokableComponentVariable
      */
     protected function createInvokableVariable( string $method ) {
-        return new InvokableComponentVariable( fn() => $this->{$method}() );
+        return new InvokableComponentVariable( function () use ( $method ) {
+            return $this->{$method}();
+        } );
     }
 
     /**
      * Determine if the given property / method should be ignored.
      *
-     * @param  string $name
+     * @param string $name
+     *
      * @return bool
      */
     protected function shouldIgnore( $name ) {
@@ -324,7 +339,8 @@ abstract class Component {
     /**
      * Set the component alias name.
      *
-     * @param  string $name
+     * @param string $name
+     *
      * @return $this
      */
     public function withName( $name ) {
@@ -336,7 +352,8 @@ abstract class Component {
     /**
      * Set the extra attributes that the component should make available.
      *
-     * @param  array $attributes
+     * @param array $attributes
+     *
      * @return $this
      */
     public function withAttributes( array $attributes ) {
@@ -350,7 +367,8 @@ abstract class Component {
     /**
      * Get a new attribute bag instance.
      *
-     * @param  array $attributes
+     * @param array $attributes
+     *
      * @return \Hybrid\Blade\ComponentAttributeBag
      */
     protected function newAttributeBag( array $attributes = [] ) {
@@ -369,9 +387,10 @@ abstract class Component {
     /**
      * Get the evaluated view contents for the given view.
      *
-     * @param  string|null                       $view
-     * @param  \Hybrid\Contracts\Arrayable|array $data
-     * @param  array                             $mergeData
+     * @param string|null                       $view
+     * @param \Hybrid\Contracts\Arrayable|array $data
+     * @param array                             $mergeData
+     *
      * @return \Hybrid\Contracts\View\View
      */
     public function view( $view, $data = [], $mergeData = [] ) {
@@ -398,14 +417,17 @@ abstract class Component {
      */
     public static function ignoredParameterNames() {
         if ( ! isset( static::$ignoredParameterNames[ static::class ] ) ) {
-            $constructor = ( new ReflectionClass(static::class) )->getConstructor();
+            $constructor = ( new ReflectionClass(
+                static::class
+            ) )->getConstructor();
 
             if ( ! $constructor ) {
                 return static::$ignoredParameterNames[ static::class ] = [];
             }
 
-            static::$ignoredParameterNames[ static::class ] = collect( $constructor->getParameters() )
-                ->map->getName()
+            static::$ignoredParameterNames[ static::class ] = ( new Collection( $constructor->getParameters() ) )
+                ->map
+                ->getName()
                 ->all();
         }
 
@@ -436,8 +458,9 @@ abstract class Component {
     /**
      * Forget the component's resolver callback.
      *
-     * @return void
      * @internal
+     *
+     * @return void
      */
     public static function forgetComponentsResolver() {
         static::$componentsResolver = null;
@@ -446,12 +469,13 @@ abstract class Component {
     /**
      * Set the callback that should be used to resolve components within views.
      *
-     * @param  \Closure(string $component, array $data): \Hybrid\Blade\Component $resolver
-     * @return void
      * @internal
+     *
+     * @param \Closure(string $component, array $data): \Hybrid\Blade\Component $resolver
+     *
+     * @return void
      */
     public static function resolveComponentsUsing( $resolver ) {
         static::$componentsResolver = $resolver;
     }
-
 }

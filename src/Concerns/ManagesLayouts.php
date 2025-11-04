@@ -4,10 +4,10 @@ namespace Hybrid\Blade\Concerns;
 
 use Hybrid\Contracts\View\View;
 use Hybrid\Tools\Str;
+use InvalidArgumentException;
 use function Hybrid\Tools\e;
 
 trait ManagesLayouts {
-
     /**
      * All of the finished, captured sections.
      *
@@ -39,8 +39,9 @@ trait ManagesLayouts {
     /**
      * Start injecting content into a section.
      *
-     * @param  string      $section
-     * @param  string|null $content
+     * @param string      $section
+     * @param string|null $content
+     *
      * @return void
      */
     public function startSection( $section, $content = null ) {
@@ -56,8 +57,9 @@ trait ManagesLayouts {
     /**
      * Inject inline content into a section.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     public function inject( $section, $content ) {
@@ -80,13 +82,15 @@ trait ManagesLayouts {
     /**
      * Stop injecting content into a section.
      *
-     * @param  bool $overwrite
+     * @param bool $overwrite
+     *
      * @return string
+     *
      * @throws \InvalidArgumentException
      */
     public function stopSection( $overwrite = false ) {
         if ( empty( $this->sectionStack ) ) {
-            throw new \InvalidArgumentException( 'Cannot end a section without first starting one.' );
+            throw new InvalidArgumentException( 'Cannot end a section without first starting one.' );
         }
 
         $last = array_pop( $this->sectionStack );
@@ -104,11 +108,12 @@ trait ManagesLayouts {
      * Stop injecting content into a section and append it.
      *
      * @return string
+     *
      * @throws \InvalidArgumentException
      */
     public function appendSection() {
         if ( empty( $this->sectionStack ) ) {
-            throw new \InvalidArgumentException( 'Cannot end a section without first starting one.' );
+            throw new InvalidArgumentException( 'Cannot end a section without first starting one.' );
         }
 
         $last = array_pop( $this->sectionStack );
@@ -125,8 +130,9 @@ trait ManagesLayouts {
     /**
      * Append content to a given section.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     protected function extendSection( $section, $content ) {
@@ -140,8 +146,9 @@ trait ManagesLayouts {
     /**
      * Get the string contents of a section.
      *
-     * @param  string $section
-     * @param  string $default
+     * @param string $section
+     * @param string $default
+     *
      * @return string
      */
     public function yieldContent( $section, $default = '' ) {
@@ -161,7 +168,8 @@ trait ManagesLayouts {
     /**
      * Get the parent placeholder for the current request.
      *
-     * @param  string $section
+     * @param string $section
+     *
      * @return string
      */
     public static function parentPlaceholder( $section = '' ) {
@@ -190,7 +198,8 @@ trait ManagesLayouts {
     /**
      * Check if section exists.
      *
-     * @param  string $name
+     * @param string $name
+     *
      * @return bool
      */
     public function hasSection( $name ) {
@@ -200,7 +209,8 @@ trait ManagesLayouts {
     /**
      * Check if section does not exist.
      *
-     * @param  string $name
+     * @param string $name
+     *
      * @return bool
      */
     public function sectionMissing( $name ) {
@@ -210,8 +220,9 @@ trait ManagesLayouts {
     /**
      * Get the contents of a section.
      *
-     * @param  string      $name
-     * @param  string|null $default
+     * @param string      $name
+     * @param string|null $default
+     *
      * @return mixed
      */
     public function getSection( $name, $default = null ) {
@@ -236,5 +247,4 @@ trait ManagesLayouts {
         $this->sections     = [];
         $this->sectionStack = [];
     }
-
 }

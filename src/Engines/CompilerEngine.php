@@ -5,10 +5,11 @@ namespace Hybrid\Blade\Engines;
 use Hybrid\Filesystem\Filesystem;
 use Hybrid\View\Compilers\CompilerInterface;
 use Hybrid\View\Engines\PhpEngine;
+use Hybrid\View\ViewException;
+use Throwable;
 use function Hybrid\Tools\last;
 
 class CompilerEngine extends PhpEngine {
-
     /**
      * The Blade compiler instance.
      *
@@ -33,10 +34,11 @@ class CompilerEngine extends PhpEngine {
     /**
      * Create a new compiler engine instance.
      *
-     * @return void
+     * @param \Hybrid\View\Compilers\CompilerInterface $compiler
+     * @param \Hybrid\Filesystem\Filesystem|null       $files
      */
     public function __construct( CompilerInterface $compiler, ?Filesystem $files = null ) {
-        parent::__construct( $files ?: new Filesystem() );
+        parent::__construct( $files ?: new Filesystem );
 
         $this->compiler = $compiler;
     }
@@ -44,9 +46,12 @@ class CompilerEngine extends PhpEngine {
     /**
      * Get the evaluated contents of the view.
      *
-     * @param  string $path
-     * @param  array  $data
+     * @param string $path
+     * @param array  $data
+     *
      * @return string
+     *
+     * @throws \Hybrid\View\ViewException
      */
     public function get( $path, array $data = [] ) {
         $this->lastCompiled[] = $path;
@@ -61,10 +66,11 @@ class CompilerEngine extends PhpEngine {
         // Once we have the path to the compiled file, we will evaluate the paths with
         // typical PHP just like any other templates. We also keep a stack of views
         // which have been rendered for right exception messages to be generated.
+
         try {
             $results = $this->evaluatePath( $this->compiler->getCompiledPath( $path ), $data );
-        } catch ( \Hybrid\View\ViewException $e ) {
-            if ( ! str( $e->getMessage() )->contains( [ 'No such file or directory', 'File does not exist at path' ] ) ) {
+        } catch ( ViewException $e ) {
+            if ( ! Str::of( $e->getMessage() )->contains( [ 'No such file or directory', 'File does not exist at path' ] ) ) {
                 throw $e;
             }
 
@@ -87,16 +93,22 @@ class CompilerEngine extends PhpEngine {
     /**
      * Handle a view exception.
      *
-     * @param  int $obLevel
+     * @param \Throwable $e
+     * @param int        $obLevel
+     *
      * @return void
+     *
      * @throws \Throwable
      */
-    protected function handleViewException( \Throwable $e, $obLevel ) {
-        // if ($e instanceof HttpException || $e instanceof HttpResponseException) {
-        // parent::handleViewException($e, $obLevel);
-        // }
+    protected function handleViewException( Throwable $e, $obLevel ) {
+// if ( $e instanceof HttpException ||
+// $e instanceof HttpResponseException ||
+// $e instanceof RecordNotFoundException ||
+// $e instanceof RecordsNotFoundException ) {
+// parent::handleViewException($e, $obLevel);
+// }
 
-        $e = new \Hybrid\View\ViewException( $this->getMessage( $e ), 0, 1, $e->getFile(), $e->getLine(), $e );
+        $e = new ViewException( $this->getMessage( $e ), 0, 1, $e->getFile(), $e->getLine(), $e );
 
         parent::handleViewException( $e, $obLevel );
     }
@@ -104,9 +116,11 @@ class CompilerEngine extends PhpEngine {
     /**
      * Get the exception message for an exception.
      *
+     * @param \Throwable $e
+     *
      * @return string
      */
-    protected function getMessage( \Throwable $e ) {
+    protected function getMessage( Throwable $e ) {
         return $e->getMessage() . ' (View: ' . realpath( last( $this->lastCompiled ) ) . ')';
     }
 
@@ -127,5 +141,4 @@ class CompilerEngine extends PhpEngine {
     public function forgetCompiledOrNotExpired() {
         $this->compiledOrNotExpired = [];
     }
-
 }

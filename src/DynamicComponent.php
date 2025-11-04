@@ -2,12 +2,14 @@
 
 namespace Hybrid\Blade;
 
+use BackedEnum;
 use Hybrid\Container\Container;
+use Hybrid\Tools\Collection;
 use Hybrid\Tools\Str;
 use Hybrid\View\Compilers\ComponentTagCompiler;
+use function Hybrid\Tools\enum_value;
 
 class DynamicComponent extends Component {
-
     /**
      * The name of the component.
      *
@@ -32,10 +34,10 @@ class DynamicComponent extends Component {
     /**
      * Create a new component instance.
      *
-     * @return void
+     * @param \BackedEnum|string $component
      */
-    public function __construct( string $component ) {
-        $this->component = $component;
+    public function __construct( BackedEnum|string $component ) {
+        $this->component = (string) enum_value( $component );
     }
 
     /**
@@ -45,7 +47,7 @@ class DynamicComponent extends Component {
      */
     public function render() {
         $template = <<<'EOF'
-<?php extract(collect($attributes->getAttributes())->mapWithKeys(function ($value, $key) { return [Hybrid\Tools\Str::camel(str_replace([':', '.'], ' ', $key)) => $value]; })->all(), EXTR_SKIP); ?>
+<?php extract((new \Hybrid\Tools\Collection($attributes->getAttributes()))->mapWithKeys(function ($value, $key) { return [Hybrid\Tools\Str::camel(str_replace([':', '.'], ' ', $key)) => $value]; })->all(), EXTR_SKIP); ?>
 {{ props }}
 <x-{{ component }} {{ bindings }} {{ attributes }}>
 {{ slots }}
@@ -70,7 +72,7 @@ EOF;
                     $this->compileProps( $bindings ),
                     $this->compileBindings( $bindings ),
                     class_exists( $class ) ? '{{ $attributes }}' : '',
-                    $this->compileSlots( $data['__laravel_slots'] ),
+                    $this->compileSlots( $data['__hybrid_core_slots'] ),
                     '{{ $slot ?? "" }}',
                 ],
                 $template
@@ -81,7 +83,8 @@ EOF;
     /**
      * Compile the @props directive for the component.
      *
-     * @param  array $bindings
+     * @param array $bindings
+     *
      * @return string
      */
     protected function compileProps( array $bindings ) {
@@ -89,29 +92,36 @@ EOF;
             return '';
         }
 
-        return '@props(' . '[\'' . implode( '\',\'', collect( $bindings )->map( static fn( $dataKey ) => Str::camel( $dataKey ) )->all() ) . '\']' . ')';
+        return '@props(' . '[\'' . implode( '\',\'', ( new Collection( $bindings ) )->map( function ( $dataKey ) {
+                return Str::camel( $dataKey );
+        } )->all() ) . '\']' . ')';
     }
 
     /**
      * Compile the bindings for the component.
      *
-     * @param  array $bindings
+     * @param array $bindings
+     *
      * @return string
      */
     protected function compileBindings( array $bindings ) {
-        return collect( $bindings )->map( static fn( $key ) => ':' . $key . '="$' . Str::camel( str_replace( [ ':', '.' ], ' ', $key ) ) . '"' )->implode( ' ' );
+        return ( new Collection( $bindings ) )
+            ->map( fn( $key ) => ':' . $key . '="$' . Str::camel( str_replace( [ ':', '.' ], ' ', $key ) ) . '"' )
+            ->implode( ' ' );
     }
 
     /**
      * Compile the slots for the component.
      *
-     * @param  array $slots
+     * @param array $slots
+     *
      * @return string
      */
     protected function compileSlots( array $slots ) {
-        return collect( $slots )->map( static fn( $slot, $name ) => '__default' === $name
-                ? null
-        : '<x-slot name="' . $name . '" ' . ( (string) $slot->attributes ) . '>{{ $' . $name . ' }}</x-slot>' )->filter()->implode( PHP_EOL );
+        return ( new Collection( $slots ) )
+            ->map( fn( $slot, $name ) => '__default' === $name ? null : '<x-slot name="' . $name . '" ' . ( (string) $slot->attributes ) . '>{{ $' . $name . ' }}</x-slot>' )
+            ->filter()
+            ->implode( PHP_EOL );
     }
 
     /**
@@ -131,10 +141,12 @@ EOF;
     /**
      * Get the names of the variables that should be bound to the component.
      *
+     * @param string $class
+     *
      * @return array
      */
     protected function bindings( string $class ) {
-        [$data, $attributes] = $this->compiler()->partitionDataAndAttributes( $class, $this->attributes->getAttributes() );
+        [$data] = $this->compiler()->partitionDataAndAttributes( $class, $this->attributes->getAttributes() );
 
         return array_keys( $data->all() );
     }
@@ -155,5 +167,4 @@ EOF;
 
         return static::$compiler;
     }
-
 }

@@ -3,7 +3,6 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesLayouts {
-
     /**
      * The name of the last section that was started.
      *
@@ -14,13 +13,14 @@ trait CompilesLayouts {
     /**
      * Compile the extends statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileExtends( $expression ) {
         $expression = $this->stripParentheses( $expression );
 
-        $echo = "<?php echo \$__env->make({$expression}, \Hybrid\Tools\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>";
+        $echo = "<?php echo \$__env->make({$expression}, array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>";
 
         $this->footer[] = $echo;
 
@@ -30,13 +30,14 @@ trait CompilesLayouts {
     /**
      * Compile the extends-first statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileExtendsFirst( $expression ) {
         $expression = $this->stripParentheses( $expression );
 
-        $echo = "<?php echo \$__env->first({$expression}, \Hybrid\Tools\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>";
+        $echo = "<?php echo \$__env->first({$expression}, array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>";
 
         $this->footer[] = $echo;
 
@@ -46,7 +47,8 @@ trait CompilesLayouts {
     /**
      * Compile the section statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileSection( $expression ) {
@@ -61,10 +63,10 @@ trait CompilesLayouts {
      * @return string
      */
     protected function compileParent() {
-        $escapedLastSection = strtr( $this->lastSection, [
-            '\\' => '\\\\',
-            "'"  => "\\'",
-        ] );
+                $escapedLastSection = strtr( $this->lastSection, [
+                    '\\' => '\\\\',
+                    "'"  => "\\'",
+                ] );
 
         return "<?php echo \Hybrid\View\Factory::parentPlaceholder('{$escapedLastSection}'); ?>";
     }
@@ -72,7 +74,8 @@ trait CompilesLayouts {
     /**
      * Compile the yield statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileYield( $expression ) {
@@ -123,5 +126,4 @@ trait CompilesLayouts {
     protected function compileEndsection() {
         return '<?php $__env->stopSection(); ?>';
     }
-
 }

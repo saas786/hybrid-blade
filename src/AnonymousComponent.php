@@ -3,7 +3,6 @@
 namespace Hybrid\Blade;
 
 class AnonymousComponent extends Component {
-
     /**
      * The component view.
      *
@@ -21,9 +20,8 @@ class AnonymousComponent extends Component {
     /**
      * Create a new anonymous component instance.
      *
-     * @param  string $view
-     * @param  array  $data
-     * @return void
+     * @param string $view
+     * @param array  $data
      */
     public function __construct( $view, $data ) {
         $this->view = $view;
@@ -54,5 +52,4 @@ class AnonymousComponent extends Component {
             [ 'attributes' => $this->attributes ]
         );
     }
-
 }

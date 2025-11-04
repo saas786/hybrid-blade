@@ -3,11 +3,11 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesInjections {
-
     /**
      * Compile the inject statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileInject( $expression ) {
@@ -19,5 +19,4 @@ trait CompilesInjections {
 
         return "<?php \${$variable} = app({$service}); ?>";
     }
-
 }

@@ -5,7 +5,6 @@ namespace Hybrid\Blade;
 use Hybrid\Tools\Stringable;
 
 class AppendableAttributeValue implements Stringable {
-
     /**
      * The attribute value.
      *
@@ -16,8 +15,7 @@ class AppendableAttributeValue implements Stringable {
     /**
      * Create a new appendable attribute value.
      *
-     * @param  mixed $value
-     * @return void
+     * @param mixed $value
      */
     public function __construct( $value ) {
         $this->value = $value;
@@ -31,5 +29,4 @@ class AppendableAttributeValue implements Stringable {
     public function __toString() {
         return (string) $this->value;
     }
-
 }

@@ -11,7 +11,6 @@ use Stringable;
 use Traversable;
 
 class InvokableComponentVariable implements DeferringDisplayableValue, IteratorAggregate, Stringable {
-
     /**
      * The callable instance to resolve the variable value.
      *
@@ -34,7 +33,7 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
      * @return \Hybrid\Contracts\Htmlable|string
      */
     public function resolveDisplayableValue() {
-        return $this();
+        return $this->__invoke();
     }
 
     /**
@@ -43,7 +42,7 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
      * @return \ArrayIterator
      */
     public function getIterator(): Traversable {
-        $result = $this();
+        $result = $this->__invoke();
 
         return new ArrayIterator( $result instanceof Enumerable ? $result->all() : $result );
     }
@@ -51,22 +50,24 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
     /**
      * Dynamically proxy attribute access to the variable.
      *
-     * @param  string $key
+     * @param string $key
+     *
      * @return mixed
      */
     public function __get( $key ) {
-        return $this()->{$key};
+        return $this->__invoke()->{$key};
     }
 
     /**
      * Dynamically proxy method access to the variable.
      *
-     * @param  string $method
-     * @param  array  $parameters
+     * @param string $method
+     * @param array  $parameters
+     *
      * @return mixed
      */
     public function __call( $method, $parameters ) {
-        return $this()->{$method}( ...$parameters );
+        return $this->__invoke()->{$method}( ...$parameters );
     }
 
     /**
@@ -84,7 +85,6 @@ class InvokableComponentVariable implements DeferringDisplayableValue, IteratorA
      * @return string
      */
     public function __toString() {
-        return (string) $this();
+        return (string) $this->__invoke();
     }
-
 }

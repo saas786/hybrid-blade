@@ -2,8 +2,9 @@
 
 namespace Hybrid\Blade\Concerns;
 
-trait ManagesStacks {
+use InvalidArgumentException;
 
+trait ManagesStacks {
     /**
      * All of the finished, captured push sections.
      *
@@ -28,8 +29,9 @@ trait ManagesStacks {
     /**
      * Start injecting content into a push section.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     public function startPush( $section, $content = '' ) {
@@ -46,11 +48,12 @@ trait ManagesStacks {
      * Stop injecting content into a push section.
      *
      * @return string
+     *
      * @throws \InvalidArgumentException
      */
     public function stopPush() {
         if ( empty( $this->pushStack ) ) {
-            throw new \InvalidArgumentException( 'Cannot end a push stack without first starting one.' );
+            throw new InvalidArgumentException( 'Cannot end a push stack without first starting one.' );
         }
 
         return tap( array_pop( $this->pushStack ), function ( $last ) {
@@ -61,8 +64,9 @@ trait ManagesStacks {
     /**
      * Append content to a given push section.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     protected function extendPush( $section, $content ) {
@@ -80,8 +84,9 @@ trait ManagesStacks {
     /**
      * Start prepending content into a push section.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     public function startPrepend( $section, $content = '' ) {
@@ -98,11 +103,12 @@ trait ManagesStacks {
      * Stop prepending content into a push section.
      *
      * @return string
+     *
      * @throws \InvalidArgumentException
      */
     public function stopPrepend() {
         if ( empty( $this->pushStack ) ) {
-            throw new \InvalidArgumentException( 'Cannot end a prepend operation without first starting one.' );
+            throw new InvalidArgumentException( 'Cannot end a prepend operation without first starting one.' );
         }
 
         return tap( array_pop( $this->pushStack ), function ( $last ) {
@@ -113,8 +119,9 @@ trait ManagesStacks {
     /**
      * Prepend content to a given stack.
      *
-     * @param  string $section
-     * @param  string $content
+     * @param string $section
+     * @param string $content
+     *
      * @return void
      */
     protected function extendPrepend( $section, $content ) {
@@ -130,12 +137,13 @@ trait ManagesStacks {
     /**
      * Get the string contents of a push section.
      *
-     * @param  string $section
-     * @param  string $default
+     * @param string $section
+     * @param string $default
+     *
      * @return string
      */
     public function yieldPushContent( $section, $default = '' ) {
-        if ( ! isset( $this->pushes[ $section ] ) && ! isset( $this->prepends[ $section ] ) ) {
+        if ( $this->isStackEmpty( $section ) ) {
             return $default;
         }
 
@@ -153,6 +161,13 @@ trait ManagesStacks {
     }
 
     /**
+     * Determine if the stack has any content in it.
+     */
+    public function isStackEmpty( string $section ): bool {
+        return ! isset( $this->pushes[ $section ] ) && ! isset( $this->prepends[ $section ] );
+    }
+
+    /**
      * Flush all of the stacks.
      *
      * @return void
@@ -162,5 +177,4 @@ trait ManagesStacks {
         $this->prepends  = [];
         $this->pushStack = [];
     }
-
 }

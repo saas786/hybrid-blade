@@ -2,16 +2,17 @@
 
 namespace Hybrid\Blade\Compilers;
 
+use Hybrid\Blade\AnonymousComponent;
+use Hybrid\Blade\DynamicComponent;
 use Hybrid\Container\Container;
-use Hybrid\Contracts\Foundation\Application;
+use Hybrid\Contracts\Core\Application;
 use Hybrid\Contracts\View\Factory;
 use Hybrid\Filesystem\Filesystem;
+use Hybrid\Tools\Collection;
 use Hybrid\Tools\Str;
-use Hybrid\View\AnonymousComponent;
-use Hybrid\View\DynamicComponent;
 use Hybrid\View\ViewFinderInterface;
+use InvalidArgumentException;
 use ReflectionClass;
-use function Hybrid\Tools\collect;
 
 /**
  * @author Spatie bvba <info@spatie.be>
@@ -49,10 +50,9 @@ class ComponentTagCompiler {
     /**
      * Create a new component tag compiler.
      *
-     * @param  array                                     $aliases
-     * @param  array                                     $namespaces
-     * @param  \Hybrid\View\Compilers\BladeCompiler|null $blade
-     * @return void
+     * @param array                                     $aliases
+     * @param array                                     $namespaces
+     * @param \Hybrid\View\Compilers\BladeCompiler|null $blade
      */
     public function __construct( array $aliases = [], array $namespaces = [], ?BladeCompiler $blade = null ) {
         $this->aliases    = $aliases;
@@ -64,7 +64,8 @@ class ComponentTagCompiler {
     /**
      * Compile the component and slot tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     public function compile( string $value ) {
@@ -76,7 +77,8 @@ class ComponentTagCompiler {
     /**
      * Compile the tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      *
      * @throws \InvalidArgumentException
@@ -92,7 +94,8 @@ class ComponentTagCompiler {
     /**
      * Compile the opening tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      *
      * @throws \InvalidArgumentException
@@ -155,7 +158,8 @@ class ComponentTagCompiler {
     /**
      * Compile the self-closing tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      *
      * @throws \InvalidArgumentException
@@ -218,8 +222,9 @@ class ComponentTagCompiler {
     /**
      * Compile the Blade component string for the given component and attributes.
      *
-     * @param  string $component
-     * @param  array  $attributes
+     * @param string $component
+     * @param array  $attributes
+     *
      * @return string
      *
      * @throws \InvalidArgumentException
@@ -230,7 +235,7 @@ class ComponentTagCompiler {
         [$data, $attributes] = $this->partitionDataAndAttributes( $class, $attributes );
 
         $data = $data->mapWithKeys( function ( $value, $key ) {
-            return [Str::camel( $key ) => $value];
+            return [ Str::camel( $key ) => $value ];
         } );
 
         // If the component doesn't exist as a class, we'll assume it's a class-less
@@ -261,7 +266,8 @@ class ComponentTagCompiler {
     /**
      * Get the component class for a given component alias.
      *
-     * @param  string $component
+     * @param string $component
+     *
      * @return string
      *
      * @throws \InvalidArgumentException
@@ -269,8 +275,8 @@ class ComponentTagCompiler {
     public function componentClass( string $component ) {
         $viewFactory = Container::getInstance()->make( Hybrid\Blade\Factory::class );
 
-        if ( isset( $this->aliases[$component] ) ) {
-            if ( class_exists( $alias = $this->aliases[$component] ) ) {
+        if ( isset( $this->aliases[ $component ] ) ) {
+            if ( class_exists( $alias = $this->aliases[ $component ] ) ) {
                 return $alias;
             }
 
@@ -278,7 +284,7 @@ class ComponentTagCompiler {
                 return $alias;
             }
 
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Unable to locate class or view [{$alias}] for component [{$component}]."
             );
         }
@@ -291,6 +297,10 @@ class ComponentTagCompiler {
             return $class;
         }
 
+        if ( class_exists( $class .= '\\' . Str::afterLast( $class, '\\' ) ) ) {
+            return $class;
+        }
+
         if ( ! is_null( $guess = $this->guessAnonymousComponentUsingNamespaces( $viewFactory, $component ) ) ||
             ! is_null( $guess = $this->guessAnonymousComponentUsingPaths( $viewFactory, $component ) ) ) {
             return $guess;
@@ -300,7 +310,7 @@ class ComponentTagCompiler {
             return $component;
         }
 
-        throw new \InvalidArgumentException(
+        throw new InvalidArgumentException(
             "Unable to locate a class or view for component [{$component}]."
         );
     }
@@ -308,8 +318,9 @@ class ComponentTagCompiler {
     /**
      * Attempt to find an anonymous component using the registered anonymous component paths.
      *
-     * @param  \Hybrid\Contracts\View\Factory $viewFactory
-     * @param  string                         $component
+     * @param \Hybrid\Contracts\View\Factory $viewFactory
+     * @param string                         $component
+     *
      * @return string|null
      */
     protected function guessAnonymousComponentUsingPaths( Factory $viewFactory, string $component ) {
@@ -327,14 +338,14 @@ class ComponentTagCompiler {
                     : $component;
 
                 if ( ! is_null( $guess = match ( true ) {
-                    $viewFactory->exists( $guess = $path['prefixHash'] . $delimiter . $formattedComponent )            => $guess,
+                    $viewFactory->exists( $guess = $path['prefixHash'] . $delimiter . $formattedComponent ) => $guess,
                     $viewFactory->exists( $guess = $path['prefixHash'] . $delimiter . $formattedComponent . '.index' ) => $guess,
-                    default                                                                                            => null,
+                    $viewFactory->exists( $guess = $path['prefixHash'] . $delimiter . $formattedComponent . '.' . Str::afterLast( $formattedComponent, '.' ) ) => $guess,
+                    default => null,
                 } ) ) {
                     return $guess;
                 }
-            } catch ( \InvalidArgumentException ) {
-                //
+            } catch ( InvalidArgumentException ) {
             }
         }
     }
@@ -342,12 +353,13 @@ class ComponentTagCompiler {
     /**
      * Attempt to find an anonymous component using the registered anonymous component namespaces.
      *
-     * @param  \Hybrid\Contracts\View\Factory $viewFactory
-     * @param  string                         $component
+     * @param \Hybrid\Contracts\View\Factory $viewFactory
+     * @param string                         $component
+     *
      * @return string|null
      */
     protected function guessAnonymousComponentUsingNamespaces( Factory $viewFactory, string $component ) {
-        return collect( $this->blade->getAnonymousComponentNamespaces() )
+        return ( new Collection( $this->blade->getAnonymousComponentNamespaces() ) )
             ->filter( function ( $directory, $prefix ) use ( $component ) {
                 return Str::startsWith( $component, $prefix . '::' );
             } )
@@ -366,13 +378,20 @@ class ComponentTagCompiler {
                 if ( $viewFactory->exists( $view = $this->guessViewName( $componentName, $directory ) . '.index' ) ) {
                     return $view;
                 }
+
+                $lastViewSegment = Str::afterLast( Str::afterLast( $componentName, '.' ), ':' );
+
+                if ( $viewFactory->exists( $view = $this->guessViewName( $componentName, $directory ) . '.' . $lastViewSegment ) ) {
+                    return $view;
+                }
             } );
     }
 
     /**
      * Find the class for the given component using the registered namespaces.
      *
-     * @param  string      $component
+     * @param string $component
+     *
      * @return string|null
      */
     public function findClassByComponent( string $component ) {
@@ -387,12 +406,17 @@ class ComponentTagCompiler {
         if ( class_exists( $class = $this->namespaces[ $prefix ] . '\\' . $this->formatClassName( $segments[1] ) ) ) {
             return $class;
         }
+
+        if ( class_exists( $class .= '\\' . Str::afterLast( $class, '\\' ) ) ) {
+            return $class;
+        }
     }
 
     /**
      * Guess the class name for the given component.
      *
-     * @param  string $component
+     * @param string $component
+     *
      * @return string
      */
     public function guessClassName( string $component ) {
@@ -408,11 +432,14 @@ class ComponentTagCompiler {
     /**
      * Format the class name for the given component.
      *
-     * @param  string $component
+     * @param string $component
+     *
      * @return string
      */
     public function formatClassName( string $component ) {
-        $componentPieces = array_map( static fn( $componentPiece ) => ucfirst( Str::camel( $componentPiece ) ), explode( '.', $component ) );
+        $componentPieces = array_map( function ( $componentPiece ) {
+            return ucfirst( Str::camel( $componentPiece ) );
+        }, explode( '.', $component ) );
 
         return implode( '\\', $componentPieces );
     }
@@ -420,8 +447,9 @@ class ComponentTagCompiler {
     /**
      * Guess the view name for the given component.
      *
-     * @param  string $name
-     * @param  string $prefix
+     * @param string $name
+     * @param string $prefix
+     *
      * @return string
      */
     public function guessViewName( $name, $prefix = 'components.' ) {
@@ -441,8 +469,9 @@ class ComponentTagCompiler {
     /**
      * Partition the data and extra attributes from the given array of attributes.
      *
-     * @param  string $class
-     * @param  array  $attributes
+     * @param string $class
+     * @param array  $attributes
+     *
      * @return array
      */
     public function partitionDataAndAttributes( $class, array $attributes ) {
@@ -450,22 +479,25 @@ class ComponentTagCompiler {
         // return all of the attributes as both data and attributes since we have
         // now way to partition them. The user can exclude attributes manually.
         if ( ! class_exists( $class ) ) {
-            return [ collect( $attributes ), collect( $attributes ) ];
+            return [ new Collection( $attributes ), new Collection( $attributes ) ];
         }
 
         $constructor = ( new ReflectionClass( $class ) )->getConstructor();
 
         $parameterNames = $constructor
-                    ? collect( $constructor->getParameters() )->map->getName()->all()
-                    : [];
+            ? ( new Collection( $constructor->getParameters() ) )->map->getName()->all()
+            : [];
 
-        return collect( $attributes )->partition( static fn( $value, $key ) => in_array( Str::camel( $key ), $parameterNames ) )->all();
+        return ( new Collection( $attributes ) )
+            ->partition( fn( $value, $key ) => in_array( Str::camel( $key ), $parameterNames ) )
+            ->all();
     }
 
     /**
      * Compile the closing tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function compileClosingTags( string $value ) {
@@ -475,7 +507,8 @@ class ComponentTagCompiler {
     /**
      * Compile the slot tags within the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     public function compileSlots( string $value ) {
@@ -524,7 +557,7 @@ class ComponentTagCompiler {
         /x";
 
         $value = preg_replace_callback( $pattern, function ( $matches ) {
-            $name = $this->stripQuotes( $matches['inlineName'] ?: $matches['name'] ?: $matches['boundName'] );
+            $name = $this->stripQuotes( $matches['inlineName'] ?: $matches['name'] ?: $matches['boundName'] ) ?: "'slot'";
 
             if ( Str::contains( $name, '-' ) && ! empty( $matches['inlineName'] ) ) {
                 $name = Str::camel( $name );
@@ -540,7 +573,13 @@ class ComponentTagCompiler {
             $attributes = $this->getAttributesFromAttributeString( $matches['attributes'] );
 
             // If an inline name was provided and a name or bound name was *also* provided, we will assume the name should be an attribute...
-            if ( ! empty( $matches['inlineName'] ) && ( ! empty( $matches['name'] ) || ! empty( $matches['boundName'] ) ) ) {
+            if (
+                ! empty( $matches['inlineName'] )
+                && (
+                    ! empty( $matches['name'] )
+                    || ! empty( $matches['boundName'] )
+                )
+            ) {
                 $attributes = ! empty( $matches['name'] )
                     ? array_merge( $attributes, $this->getAttributesFromAttributeString( 'name=' . $matches['name'] ) )
                     : array_merge( $attributes, $this->getAttributesFromAttributeString( ':name=' . $matches['boundName'] ) );
@@ -555,7 +594,8 @@ class ComponentTagCompiler {
     /**
      * Get an array of attributes from the given attribute string.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return array
      */
     protected function getAttributesFromAttributeString( string $attributeString ) {
@@ -585,7 +625,7 @@ class ComponentTagCompiler {
             return [];
         }
 
-        return collect( $matches )->mapWithKeys( function ( $match ) {
+        return ( new Collection( $matches ) )->mapWithKeys( function ( $match ) {
             $attribute = $match['attribute'];
             $value     = $match['value'] ?? null;
 
@@ -600,7 +640,7 @@ class ComponentTagCompiler {
             if ( str_starts_with( $attribute, 'bind:' ) ) {
                 $attribute = Str::after( $attribute, 'bind:' );
 
-                $this->boundAttributes[$attribute] = true;
+                $this->boundAttributes[ $attribute ] = true;
             } else {
                 $value = "'" . $this->compileAttributeEchos( $value ) . "'";
             }
@@ -609,18 +649,19 @@ class ComponentTagCompiler {
                 $attribute = substr( $attribute, 1 );
             }
 
-            return [$attribute => $value];
+            return [ $attribute => $value ];
         } )->toArray();
     }
 
     /**
      * Parses a short attribute syntax like :$foo into a fully-qualified syntax like :foo="$foo".
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function parseShortAttributeSyntax( string $value ) {
-        $pattern = "/\s\:\\\$(\w+)/x";
+        $pattern = '/\s\:\\$(\w+)/x';
 
         return preg_replace_callback( $pattern, function ( array $matches ) {
             return " :{$matches[1]}=\"\${$matches[1]}\"";
@@ -630,7 +671,8 @@ class ComponentTagCompiler {
     /**
      * Parse the attribute bag in a given attribute string into its fully-qualified syntax.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return string
      */
     protected function parseAttributeBag( string $attributeString ) {
@@ -645,12 +687,13 @@ class ComponentTagCompiler {
     /**
      * Parse @class statements in a given attribute string into their fully-qualified syntax.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return string
      */
     protected function parseComponentTagClassStatements( string $attributeString ) {
         return preg_replace_callback(
-            '/@(class)(\( ( (?>[^()]+) | (?2) )* \))/x', static function ( $match ) {
+            '/@(class)(\( ( (?>[^()]+) | (?2) )* \))/x', function ( $match ) {
                 if ( 'class' === $match[1] ) {
                     $match[2] = str_replace( '"', "'", $match[2] );
 
@@ -665,7 +708,8 @@ class ComponentTagCompiler {
     /**
      * Parse @style statements in a given attribute string into their fully-qualified syntax.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return string
      */
     protected function parseComponentTagStyleStatements( string $attributeString ) {
@@ -685,7 +729,8 @@ class ComponentTagCompiler {
     /**
      * Parse the "bind" attributes in a given attribute string into their fully-qualified syntax.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return string
      */
     protected function parseBindAttributes( string $attributeString ) {
@@ -704,7 +749,8 @@ class ComponentTagCompiler {
      *
      * These echo statements need to be converted to string concatenation statements.
      *
-     * @param  string $attributeString
+     * @param string $attributeString
+     *
      * @return string
      */
     protected function compileAttributeEchos( string $attributeString ) {
@@ -721,11 +767,12 @@ class ComponentTagCompiler {
     /**
      * Escape the single quotes in the given string that are outside of PHP blocks.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     protected function escapeSingleQuotesOutsideOfPhpBlocks( string $value ) {
-        return collect( token_get_all( $value ) )->map( static function ( $token ) {
+        return ( new Collection( token_get_all( $value ) ) )->map( function ( $token ) {
             if ( ! is_array( $token ) ) {
                 return $token;
             }
@@ -739,22 +786,26 @@ class ComponentTagCompiler {
     /**
      * Convert an array of attributes to a string.
      *
-     * @param  array  $attributes
-     * @param  bool   $escapeBound
+     * @param array $attributes
+     * @param bool  $escapeBound
+     *
      * @return string
      */
     protected function attributesToString( array $attributes, $escapeBound = true ) {
-        return collect( $attributes )
-            ->map( fn( string $value, string $attribute ) => $escapeBound && isset( $this->boundAttributes[ $attribute ] ) && 'true' !== $value && ! is_numeric( $value )
-                            ? "'{$attribute}' => \Hybrid\View\Compilers\BladeCompiler::sanitizeComponentAttribute({$value})"
-            : "'{$attribute}' => {$value}" )
+        return ( new Collection( $attributes ) )
+            ->map( function ( string $value, string $attribute ) use ( $escapeBound ) {
+                return $escapeBound && isset( $this->boundAttributes[ $attribute ] ) && 'true' !== $value && ! is_numeric( $value )
+                    ? "'{$attribute}' => \Hybrid\Blade\Compilers\BladeCompiler::sanitizeComponentAttribute({$value})"
+                    : "'{$attribute}' => {$value}";
+            } )
             ->implode( ',' );
     }
 
     /**
      * Strip any quotes from the given string.
      *
-     * @param  string $value
+     * @param string $value
+     *
      * @return string
      */
     public function stripQuotes( string $value ) {

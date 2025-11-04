@@ -5,7 +5,6 @@ namespace Hybrid\Blade\Compilers\Concerns;
 use Hybrid\Tools\Str;
 
 trait CompilesConditionals {
-
     /**
      * Identifier for the first case in the switch statement.
      *
@@ -16,7 +15,8 @@ trait CompilesConditionals {
     /**
      * Compile the if-auth statements into valid PHP.
      *
-     * @param  string|null $guard
+     * @param string|null $guard
+     *
      * @return string
      */
     protected function compileAuth( $guard = null ) {
@@ -28,7 +28,8 @@ trait CompilesConditionals {
     /**
      * Compile the else-auth statements into valid PHP.
      *
-     * @param  string|null $guard
+     * @param string|null $guard
+     *
      * @return string
      */
     protected function compileElseAuth( $guard = null ) {
@@ -49,7 +50,8 @@ trait CompilesConditionals {
     /**
      * Compile the env statements into valid PHP.
      *
-     * @param  string $environments
+     * @param string $environments
+     *
      * @return string
      */
     protected function compileEnv( $environments ) {
@@ -86,7 +88,8 @@ trait CompilesConditionals {
     /**
      * Compile the if-guest statements into valid PHP.
      *
-     * @param  string|null $guard
+     * @param string|null $guard
+     *
      * @return string
      */
     protected function compileGuest( $guard = null ) {
@@ -98,7 +101,8 @@ trait CompilesConditionals {
     /**
      * Compile the else-guest statements into valid PHP.
      *
-     * @param  string|null $guard
+     * @param string|null $guard
+     *
      * @return string
      */
     protected function compileElseGuest( $guard = null ) {
@@ -119,7 +123,8 @@ trait CompilesConditionals {
     /**
      * Compile the has-section statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileHasSection( $expression ) {
@@ -127,9 +132,21 @@ trait CompilesConditionals {
     }
 
     /**
+     * Compile the has-stack statements into valid PHP.
+     *
+     * @param string $expression
+     *
+     * @return string
+     */
+    protected function compileHasStack( $expression ) {
+        return "<?php if (! \$__env->isStackEmpty{$expression}): ?>";
+    }
+
+    /**
      * Compile the section-missing statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileSectionMissing( $expression ) {
@@ -139,7 +156,8 @@ trait CompilesConditionals {
     /**
      * Compile the if statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileIf( $expression ) {
@@ -149,7 +167,8 @@ trait CompilesConditionals {
     /**
      * Compile the unless statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileUnless( $expression ) {
@@ -159,7 +178,8 @@ trait CompilesConditionals {
     /**
      * Compile the else-if statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileElseif( $expression ) {
@@ -196,7 +216,8 @@ trait CompilesConditionals {
     /**
      * Compile the if-isset statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileIsset( $expression ) {
@@ -215,7 +236,8 @@ trait CompilesConditionals {
     /**
      * Compile the switch statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileSwitch( $expression ) {
@@ -227,7 +249,8 @@ trait CompilesConditionals {
     /**
      * Compile the case statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileCase( $expression ) {
@@ -261,7 +284,8 @@ trait CompilesConditionals {
     /**
      * Compile a once block into valid PHP.
      *
-     * @param  string|null $id
+     * @param string|null $id
+     *
      * @return string
      */
     protected function compileOnce( $id = null ) {
@@ -280,19 +304,21 @@ trait CompilesConditionals {
     }
 
     /**
-     * Compile a selected block into valid PHP.
+     * Compile a boolean value into a raw true / false value for embedding into HTML attributes or JavaScript.
      *
-     * @param  string $condition
+     * @param bool $condition
+     *
      * @return string
      */
-    protected function compileSelected( $condition ) {
-        return "<?php if{$condition}: echo 'selected'; endif; ?>";
+    protected function compileBool( $condition ) {
+        return "<?php echo ($condition ? 'true' : 'false'); ?>";
     }
 
     /**
      * Compile a checked block into valid PHP.
      *
-     * @param  string $condition
+     * @param string $condition
+     *
      * @return string
      */
     protected function compileChecked( $condition ) {
@@ -302,7 +328,8 @@ trait CompilesConditionals {
     /**
      * Compile a disabled block into valid PHP.
      *
-     * @param  string $condition
+     * @param string $condition
+     *
      * @return string
      */
     protected function compileDisabled( $condition ) {
@@ -312,7 +339,8 @@ trait CompilesConditionals {
     /**
      * Compile a required block into valid PHP.
      *
-     * @param  string $condition
+     * @param string $condition
+     *
      * @return string
      */
     protected function compileRequired( $condition ) {
@@ -322,7 +350,8 @@ trait CompilesConditionals {
     /**
      * Compile a readonly block into valid PHP.
      *
-     * @param  string $condition
+     * @param string $condition
+     *
      * @return string
      */
     protected function compileReadonly( $condition ) {
@@ -330,13 +359,34 @@ trait CompilesConditionals {
     }
 
     /**
+     * Compile a selected block into valid PHP.
+     *
+     * @param string $condition
+     *
+     * @return string
+     */
+    protected function compileSelected( $condition ) {
+        return "<?php if{$condition}: echo 'selected'; endif; ?>";
+    }
+
+    /**
      * Compile the push statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compilePushIf( $expression ) {
-        $parts = explode( ',', $this->stripParentheses( $expression ), 2 );
+        $parts = explode( ',', $this->stripParentheses( $expression ) );
+
+        if ( count( $parts ) > 2 ) {
+            $last = array_pop( $parts );
+
+            $parts = [
+                implode( ',', $parts ),
+                trim( $last ),
+            ];
+        }
 
         return "<?php if({$parts[0]}): \$__env->startPush({$parts[1]}); ?>";
     }
@@ -344,7 +394,8 @@ trait CompilesConditionals {
     /**
      * Compile the else-if push statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileElsePushIf( $expression ) {
@@ -356,7 +407,8 @@ trait CompilesConditionals {
     /**
      * Compile the else push statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileElsePush( $expression ) {
@@ -371,5 +423,4 @@ trait CompilesConditionals {
     protected function compileEndPushIf() {
         return '<?php $__env->stopPush(); endif; ?>';
     }
-
 }

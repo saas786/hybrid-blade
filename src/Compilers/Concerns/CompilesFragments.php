@@ -3,7 +3,6 @@
 namespace Hybrid\Blade\Compilers\Concerns;
 
 trait CompilesFragments {
-
     /**
      * The last compiled fragment.
      *
@@ -14,7 +13,8 @@ trait CompilesFragments {
     /**
      * Compile the fragment statements into valid PHP.
      *
-     * @param  string $expression
+     * @param string $expression
+     *
      * @return string
      */
     protected function compileFragment( $expression ) {
@@ -31,5 +31,4 @@ trait CompilesFragments {
     protected function compileEndfragment() {
         return '<?php echo $__env->stopFragment(); ?>';
     }
-
 }

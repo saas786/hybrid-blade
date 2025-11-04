@@ -7,7 +7,6 @@ use Hybrid\Contracts\View\View;
 use Hybrid\Tools\Arr;
 
 trait ManagesComponents {
-
     /**
      * The components being rendered.
      *
@@ -46,8 +45,9 @@ trait ManagesComponents {
     /**
      * Start a component rendering process.
      *
-     * @param  \Hybrid\Contracts\View\View|\Hybrid\Contracts\Htmlable|\Closure|string $view
-     * @param  array                                                                  $data
+     * @param \Hybrid\Contracts\View\View|\Hybrid\Contracts\Htmlable|\Closure|string $view
+     * @param array                                                                  $data
+     *
      * @return void
      */
     public function startComponent( $view, array $data = [] ) {
@@ -63,12 +63,15 @@ trait ManagesComponents {
     /**
      * Get the first view that actually exists from the given list, and start a component.
      *
-     * @param  array $names
-     * @param  array $data
+     * @param array $names
+     * @param array $data
+     *
      * @return void
      */
     public function startComponentFirst( array $names, array $data = [] ) {
-        $name = Arr::first( $names, fn( $item ) => $this->exists( $item ) );
+        $name = Arr::first( $names, function ( $item ) {
+            return $this->exists( $item );
+        } );
 
         $this->startComponent( $name, $data );
     }
@@ -119,15 +122,16 @@ trait ManagesComponents {
             $this->componentData[ count( $this->componentStack ) ],
             [ 'slot' => $defaultSlot ],
             $this->slots[ count( $this->componentStack ) ],
-            [ '__laravel_slots' => $slots ]
+            [ '__hybrid_core_slots' => $slots ]
         );
     }
 
     /**
      * Get an item from the component data that exists above the current component.
      *
-     * @param  string $key
-     * @param  mixed  $default
+     * @param string $key
+     * @param mixed  $default
+     *
      * @return mixed|null
      */
     public function getConsumableComponentData( $key, $default = null ) {
@@ -155,9 +159,10 @@ trait ManagesComponents {
     /**
      * Start the slot rendering process.
      *
-     * @param  string      $name
-     * @param  string|null $content
-     * @param  array       $attributes
+     * @param string      $name
+     * @param string|null $content
+     * @param array       $attributes
+     *
      * @return void
      */
     public function slot( $name, $content = null, $attributes = [] ) {
@@ -208,5 +213,4 @@ trait ManagesComponents {
         $this->componentData        = [];
         $this->currentComponentData = [];
     }
-
 }
